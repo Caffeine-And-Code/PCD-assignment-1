@@ -1,0 +1,52 @@
+name: release.yml
+on:
+  push:
+    branches:
+      - master
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v5
+
+      - name: Setup Java
+        uses: actions/setup-java@v5
+        with:
+          distribution: 'temurin'
+          java-version: '21'
+          cache: 'sbt'
+
+      - name: Setup SBT
+        uses: sbt/setup-sbt@v1
+
+      - name: Verify build
+        run: sbt compile
+
+      - name: Read version from build.sbt
+        id: get-version
+        run: |
+          VERSION=$(grep -E '^\s*(ThisBuild\s*/\s*)?version\s*:=' build.sbt | head -n1 | sed -E 's/.*"([^"]+)".*/\1/')
+          if [ -z "$VERSION" ]; then
+            echo "Versione non trovata in build.sbt" >&2
+            exit 1
+          fi
+          echo "Versione: $VERSION"
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+
+      - name: Create ZIP
+        run: |
+          zip -r "PCD-assigment-${{ steps.get-version.outputs.version }}.zip" src doc
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: v${{ steps.get-version.outputs.version }}
+          name: Release v${{ steps.get-version.outputs.version }}
+          draft: false
+          prerelease: false
+          generate_release_notes: true
+          files: PCD-assigment-${{ steps.get-version.outputs.version }}.zip
