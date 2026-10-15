@@ -31,6 +31,8 @@ public record V2d(double x, double y)  {
     public String toString(){
         return "V2d("+x+","+y+")";
     }
-    
-    
+
+    public static V2d empty() {
+        return new V2d(0, 0);
+    }
 }

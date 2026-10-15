@@ -8,6 +8,7 @@ public class ViewModel {
 
 	private final ArrayList<BallViewInfo> balls;
 	private BallViewInfo player;
+	private BallViewInfo bot;
 	private int framePerSec;
 	
 	public ViewModel() {
@@ -23,6 +24,8 @@ public class ViewModel {
 		this.framePerSec = framePerSec;
 		var p = board.getPlayerBall();
 		player = new BallViewInfo(p.getPos(), p.getRadius());
+		p = board.getBotBall();
+		bot = new BallViewInfo(p.getPos(), p.getRadius());
 	}
 	
 	public synchronized ArrayList<BallViewInfo> getBalls(){
@@ -38,6 +41,10 @@ public class ViewModel {
 
 	public synchronized BallViewInfo getPlayerBall() {
 		return player;
+	}
+
+	public synchronized BallViewInfo getBotBall() {
+		return bot;
 	}
 	
 }

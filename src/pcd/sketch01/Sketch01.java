@@ -31,8 +31,8 @@ public class Sketch01 {
 		int nFrames = 0;
 		long t0 = System.currentTimeMillis();
 		long lastUpdateTime = System.currentTimeMillis();
-			
-		var pb = board.getPlayerBall();
+
+		var pb = board.getBotBall();
 		var rand = new Random(2);
 		var lastKickTime = t0;
 				
