@@ -2,7 +2,7 @@ package pcd.sketch02.model;
 
 public class AutonomousUpdater extends Thread {
 
-	private Counter count;
+	private final Counter count;
 	
 	public AutonomousUpdater(Counter count) {
 		this.count = count;	
@@ -18,6 +18,7 @@ public class AutonomousUpdater extends Thread {
 	private void sleepAbit() {
 		try {
 			Thread.sleep(1000);
-		} catch (Exception ex) {}
+		} catch (Exception _) {
+		}
 	}
 }

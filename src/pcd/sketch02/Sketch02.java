@@ -1,16 +1,15 @@
 package pcd.sketch02;
 
-import pcd.sketch02.controller.*;
+import pcd.sketch02.controller.ActiveController;
 import pcd.sketch02.model.AutonomousUpdater;
 import pcd.sketch02.model.Counter;
-import pcd.sketch02.util.*;
 import pcd.sketch02.view.View;
 import pcd.sketch02.view.ViewModel;
 
 public class Sketch02 {
 
-	
-	public static void main(String[] argv) {
+
+	static void main() {
 
 		var model = new Counter(0);
 		

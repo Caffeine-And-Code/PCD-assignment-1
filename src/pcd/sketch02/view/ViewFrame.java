@@ -1,24 +1,21 @@
 package pcd.sketch02.view;
 
-import java.awt.BasicStroke;
-import java.awt.Color;
-import java.awt.Graphics;
-import java.awt.Graphics2D;
-import java.awt.RenderingHints;
+import pcd.sketch02.controller.ActiveController;
+import pcd.sketch02.controller.IncCmd;
+import pcd.sketch02.controller.ResetCmd;
+
+import javax.swing.*;
+import java.awt.*;
 import java.awt.event.KeyEvent;
 import java.awt.event.KeyListener;
 import java.awt.event.WindowAdapter;
 import java.awt.event.WindowEvent;
-import javax.swing.*;
-
-import pcd.sketch02.controller.*;
-import pcd.sketch02.util.*;
 
 public class ViewFrame extends JFrame implements KeyListener {
-    
-    private VisualiserPanel panel;
-    private ViewModel viewModel;
-    private ActiveController controller;
+
+	private final VisualiserPanel panel;
+	private final ViewModel viewModel;
+	private final ActiveController controller;
     
     public ViewFrame(ViewModel viewModel, ActiveController controller){
     	setTitle("Sketch 02");

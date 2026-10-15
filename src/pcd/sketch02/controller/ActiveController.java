@@ -6,11 +6,11 @@ import pcd.sketch02.util.BoundedBufferImpl;
 
 public class ActiveController extends Thread {
 
-	private BoundedBuffer<Cmd> cmdBuffer;
-	private Counter counter;
+	private final BoundedBuffer<Cmd> cmdBuffer;
+	private final Counter counter;
 	
 	public ActiveController(Counter counter) {
-		this.cmdBuffer = new BoundedBufferImpl<Cmd>(100);
+		this.cmdBuffer = new BoundedBufferImpl<>(100);
 		this.counter = counter;
 	}
 	

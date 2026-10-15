@@ -1,19 +1,15 @@
 package pcd.sketch01;
 
-import java.awt.BasicStroke;
-import java.awt.Color;
-import java.awt.Graphics;
-import java.awt.Graphics2D;
-import java.awt.RenderingHints;
+import javax.swing.*;
+import java.awt.*;
 import java.awt.event.WindowAdapter;
 import java.awt.event.WindowEvent;
-import javax.swing.*;
 
 public class ViewFrame extends JFrame {
-    
-    private VisualiserPanel panel;
-    private ViewModel model;
-    private RenderSynch sync;
+
+	private final VisualiserPanel panel;
+	private final ViewModel model;
+	private final RenderSynch sync;
     
     public ViewFrame(ViewModel model, int w, int h){
     	this.model = model;
@@ -44,9 +40,9 @@ public class ViewFrame extends JFrame {
     }
         
     public class VisualiserPanel extends JPanel {
-        private int ox;
-        private int oy;
-        private int delta;
+		private final int ox;
+		private final int oy;
+		private final int delta;
         
         public VisualiserPanel(int w, int h){
             setSize(w,h + 25);
