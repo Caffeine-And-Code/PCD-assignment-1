@@ -16,17 +16,17 @@ public class ViewModel {
 		framePerSec = 0;
 	}
 	
-	public synchronized void update(Board board, int framePerSec) {
-		balls.clear();
-		for (var b: board.getBalls()) {
-			balls.add(new BallViewInfo(b.getPos(), b.getRadius()));
-		}
-		this.framePerSec = framePerSec;
-		var p = board.getPlayerBall();
-		player = new BallViewInfo(p.getPos(), p.getRadius());
-		p = board.getBotBall();
-		bot = new BallViewInfo(p.getPos(), p.getRadius());
-	}
+//	public synchronized void update(Board board, int framePerSec) {
+//		balls.clear();
+//		for (var b: board.getBalls()) {
+//			balls.add(new BallViewInfo(b.getPos(), b.getRadius()));
+//		}
+//		this.framePerSec = framePerSec;
+//		var p = board.getPlayerBall();
+//		player = new BallViewInfo(p.getPos(), p.getRadius());
+//		p = board.getBotBall();
+//		bot = new BallViewInfo(p.getPos(), p.getRadius());
+//	}
 	
 	public synchronized ArrayList<BallViewInfo> getBalls(){
 		var copy = new ArrayList<BallViewInfo>();

@@ -1,9 +1,11 @@
-package pcd.poool.model;
+package pcd.poool.model.balls;
 
 import pcd.poool.model.base.Vector;
+import pcd.poool.model.board.Board;
 
 public interface Ball {
-    Vector getPosition();
+
+    public Vector getPosition();
 
     double getMass();
 
@@ -18,4 +20,8 @@ public interface Ball {
     void setRadius(double radius);
 
     void setVelocity(Vector velocity);
+
+    String getId();
+
+    void updateState(long dt, Board ctx);
 }

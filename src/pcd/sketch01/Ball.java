@@ -1,5 +1,7 @@
 package pcd.sketch01;
 
+import pcd.poool.model.board.Boundary;
+
 public class Ball {
     
     private P2d pos;
@@ -16,20 +18,20 @@ public class Ball {
        this.mass = mass;
        this.vel = vel;
     }
-
-    public void updateState(long dt, Board ctx){
-        double speed = vel.abs();
-        double dt_scaled = dt*0.001;
-    	if (speed > 0.001) {
-            double dec    = FRICTION_FACTOR * dt_scaled;
-            double factor = Math.max(0, speed - dec) / speed;
-            vel = vel.mul(factor);
-        } else {
-        	vel = new V2d(0,0);
-        }
-        pos = pos.sum(vel.mul(dt_scaled));
-     	applyBoundaryConstraints(ctx);
-    }
+//
+//    public void updateState(long dt, Board ctx){
+//        double speed = vel.abs();
+//        double dt_scaled = dt*0.001;
+//    	if (speed > 0.001) {
+//            double dec    = FRICTION_FACTOR * dt_scaled;
+//            double factor = Math.max(0, speed - dec) / speed;
+//            vel = vel.mul(factor);
+//        } else {
+//        	vel = new V2d(0,0);
+//        }
+//        pos = pos.sum(vel.mul(dt_scaled));
+//     	applyBoundaryConstraints(ctx);
+//    }
     
     public void kick(V2d vel) {
     	this.vel = vel;
@@ -40,22 +42,22 @@ public class Ball {
      * Keep the ball inside the boundaries, updating the velocity in the case of bounces
      *
      */
-    private void applyBoundaryConstraints(Board ctx){
-        Boundary bounds = ctx.getBounds();
-        if (pos.x() + radius > bounds.x1()){
-            pos = new P2d(bounds.x1() - radius, pos.y());
-            vel = vel.getSwappedX();
-        } else if (pos.x() - radius < bounds.x0()){
-            pos = new P2d(bounds.x0() + radius, pos.y());
-            vel = vel.getSwappedX();
-        } else if (pos.y() + radius > bounds.y1()){
-            pos = new P2d(pos.x(), bounds.y1() - radius);
-            vel = vel.getSwappedY();
-        } else if (pos.y() - radius < bounds.y0()){
-            pos = new P2d(pos.x(), bounds.y0() + radius);
-            vel = vel.getSwappedY();
-        }
-    }
+//    private void applyBoundaryConstraints(Board ctx){
+//        Boundary bounds = ctx.getBounds();
+//        if (pos.x() + radius > bounds.x1()){
+//            pos = new P2d(bounds.x1() - radius, pos.y());
+//            vel = vel.getSwappedX();
+//        } else if (pos.x() - radius < bounds.x0()){
+//            pos = new P2d(bounds.x0() + radius, pos.y());
+//            vel = vel.getSwappedX();
+//        } else if (pos.y() + radius > bounds.y1()){
+//            pos = new P2d(pos.x(), bounds.y1() - radius);
+//            vel = vel.getSwappedY();
+//        } else if (pos.y() - radius < bounds.y0()){
+//            pos = new P2d(pos.x(), bounds.y0() + radius);
+//            vel = vel.getSwappedY();
+//        }
+//    }
 
     /**
      * 

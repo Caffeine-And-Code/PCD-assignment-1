@@ -1,6 +1,6 @@
 package pcd.poool.view.viewmodels;
 
-import pcd.poool.model.Ball;
+import pcd.poool.model.balls.Ball;
 
 import java.util.List;
 
