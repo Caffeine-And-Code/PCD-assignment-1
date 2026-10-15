@@ -4,8 +4,8 @@ import java.util.Random;
 
 public class Sketch01 {
 
-	
-	public static void main(String[] argv) {
+
+	static void main() {
 
 		/* 
 		 * Different board configs to try:
@@ -13,10 +13,10 @@ public class Sketch01 {
 		 * - large: 400 small balls
 		 * - massive: 4500 small balls 
 		 */
-		
-		var boardConf = new MinimalBoardConf();
-		// var boardConf = new LargeBoardConf();
-		// var boardConf = new MassiveBoardConf();
+
+		//var boardConf = new MinimalBoardConf();
+		//var boardConf = new LargeBoardConf();
+		var boardConf = new MassiveBoardConf();
 		
 		Board board = new Board();
 		board.init(boardConf);
@@ -73,7 +73,8 @@ public class Sketch01 {
 	private static void waitAbit() {
 		try {
 			Thread.sleep(2000);
-		} catch (Exception ex) {}
+		} catch (Exception _) {
+		}
 	}
 	
 }

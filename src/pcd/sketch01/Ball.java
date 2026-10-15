@@ -4,11 +4,11 @@ public class Ball {
     
     private P2d pos;
     private V2d vel;
-    private double radius;
-    private double mass;   
-    
+    private final double radius;
+    private final double mass;
+
     private static double FRICTION_FACTOR = 0.25; 	/* 0 minimum */
-    private static double RESTITUTION_FACTOR = 1; 
+    private static double RESTITUTION_FACTOR = 1;
 
     public Ball(P2d pos, double radius, double mass, V2d vel){
        this.pos = pos;
@@ -38,8 +38,7 @@ public class Ball {
     /**
      * 
      * Keep the ball inside the boundaries, updating the velocity in the case of bounces
-     * 
-     * @param ctx
+     *
      */
     private void applyBoundaryConstraints(Board ctx){
         Boundary bounds = ctx.getBounds();
@@ -61,9 +60,7 @@ public class Ball {
     /**
      * 
      * Resolving collision between 2 balls, updating their position and velocity
-     * 
-     * @param a
-     * @param b
+     *
      */
     public static void resolveCollision(Ball a, Ball b) {
         

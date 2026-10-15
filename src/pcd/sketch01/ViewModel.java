@@ -6,12 +6,12 @@ record BallViewInfo(P2d pos, double radius) {}
 
 public class ViewModel {
 
-	private ArrayList<BallViewInfo> balls;
+	private final ArrayList<BallViewInfo> balls;
 	private BallViewInfo player;
 	private int framePerSec;
 	
 	public ViewModel() {
-		balls = new ArrayList<BallViewInfo>();
+		balls = new ArrayList<>();
 		framePerSec = 0;
 	}
 	
@@ -28,8 +28,8 @@ public class ViewModel {
 	public synchronized ArrayList<BallViewInfo> getBalls(){
 		var copy = new ArrayList<BallViewInfo>();
 		copy.addAll(balls);
+
 		return copy;
-		
 	}
 
 	public synchronized int getFramePerSec() {
