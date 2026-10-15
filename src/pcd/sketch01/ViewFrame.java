@@ -52,14 +52,7 @@ public class ViewFrame extends JFrame {
             delta = Math.min(ox, oy);
         }
 
-        private void paintBall(BallViewInfo b, Graphics2D g2) {
-            var p = b.pos();
-            int x0 = (int) (ox + p.x() * delta);
-            int y0 = (int) (oy - p.y() * delta);
-            int radiusX = (int) (b.radius() * delta);
-            int radiusY = (int) (b.radius() * delta);
-            g2.drawOval(x0 - radiusX, y0 - radiusY, radiusX * 2, radiusY * 2);
-        }
+
 
         public void paint(Graphics g) {
             Graphics2D g2 = (Graphics2D) g;
@@ -79,7 +72,7 @@ public class ViewFrame extends JFrame {
             /* Draw Small Balls */
             g2.setStroke(new BasicStroke(1));
             for (var b : model.getBalls()) {
-                paintBall(b, g2);
+                //paintBall(b, g2);
             }
 
             /* Draw Player and Bot */
@@ -87,14 +80,14 @@ public class ViewFrame extends JFrame {
             var pb = model.getPlayerBall();
             if (pb != null) {
                 g2.setPaint(Color.MAGENTA);
-                paintBall(pb, g2);
+                //paintBall(pb, g2);
                 g2.setPaint(Color.BLACK);
             }
 
             var pBot = model.getBotBall();
             if (pBot != null) {
                 g2.setPaint(Color.GREEN);
-                paintBall(pBot, g2);
+                //paintBall(pBot, g2);
                 g2.setPaint(Color.BLACK);
             }
 
