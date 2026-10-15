@@ -1,4 +1,4 @@
 package pcd.poool.controller;
 
-public class ex {
+public interface Controller {
 }
