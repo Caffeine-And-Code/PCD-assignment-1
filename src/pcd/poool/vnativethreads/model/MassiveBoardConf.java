@@ -1,7 +1,5 @@
 package pcd.poool.vnativethreads.model;
 
-import pcd.poool.vnativethreads.model.factory.GameFactory;
-
 import java.util.ArrayList;
 import java.util.List;
 

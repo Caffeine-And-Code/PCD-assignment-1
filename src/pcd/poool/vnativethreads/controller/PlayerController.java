@@ -5,14 +5,14 @@ import pcd.poool.vnativethreads.util.BoundedBuffer;
 import pcd.poool.vnativethreads.util.BoundedBufferImpl;
 
 
-public class PooolController extends Thread {
+public class PlayerController extends Thread {
     private static final int BUFFER_SIZE = 200;
     private final BoundedBuffer<Command> buffer = new BoundedBufferImpl<>(BUFFER_SIZE);
     private final Scene scene;
     private PhysicsLoop physics;
     private BotPlayer bot;
 
-    public PooolController(Scene scene) {
+    public PlayerController(Scene scene) {
         super("poool-commands");
         this.scene = scene;
     }

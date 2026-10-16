@@ -20,19 +20,20 @@ public class BotPlayer extends Thread {
         try {
             while (!isInterrupted() && !scene.isGameOver()) {
                 Thread.sleep(THINK_TIME);
-                var board = scene.getBoard();
-                var balls = board.getBalls();
+                var boardCopy = scene.getBoard();
+                var balls = boardCopy.getBalls();
                 if (balls.isEmpty()) return;
 
-                var bot = board.getBotBall();
+                var bot = boardCopy.getBotBall();
                 var target = balls.get(random.nextInt(balls.size()));
                 double dx = target.getPos().x() - bot.getPos().x();
                 double dy = target.getPos().y() - bot.getPos().y();
                 double distance = Math.hypot(dx, dy);
                 if (distance > 1e-6) {
-                    board.kickBot(new V2d(
+                    scene.updateBoard(board ->
+                            board.kickBot(new V2d(
                             Command.UPDATE_STEP * dx / distance,
-                            Command.UPDATE_STEP * dy / distance));
+                            Command.UPDATE_STEP * dy / distance)));
                 }
             }
         } catch (InterruptedException ex) {

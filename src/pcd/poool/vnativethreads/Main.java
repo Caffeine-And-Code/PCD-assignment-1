@@ -2,7 +2,7 @@ package pcd.poool.vnativethreads;
 
 import pcd.poool.vnativethreads.controller.BotPlayer;
 import pcd.poool.vnativethreads.controller.PhysicsLoop;
-import pcd.poool.vnativethreads.controller.PooolController;
+import pcd.poool.vnativethreads.controller.PlayerController;
 import pcd.poool.vnativethreads.model.MassiveBoardConf;
 import pcd.poool.vnativethreads.model.Scene;
 import pcd.poool.vnativethreads.view.View;
@@ -18,7 +18,7 @@ public class Main {
         SwingUtilities.invokeLater(() -> {
             Scene scene = new Scene();
             scene.initBoard(new MassiveBoardConf());
-            var controller = new PooolController(scene);
+            var controller = new PlayerController(scene);
             var viewModel = new ViewModel();
             var view = new View(viewModel, 1200, 800, controller);
             scene.addObserver(view);

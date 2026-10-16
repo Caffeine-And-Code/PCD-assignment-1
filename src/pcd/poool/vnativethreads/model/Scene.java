@@ -87,7 +87,7 @@ public class Scene {
     public Board getBoard() {
         lock.lock();
         try {
-            return board;
+            return board.copy();
         } finally {
             lock.unlock();
         }

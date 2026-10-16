@@ -13,9 +13,9 @@ public class ViewFrame extends JFrame {
 
     private final VisualiserPanel panel;
     private final ViewModel model;
-    private final PooolController controller;
+    private final PlayerController controller;
 
-    public ViewFrame(ViewModel model, int w, int h, PooolController controller) {
+    public ViewFrame(ViewModel model, int w, int h, PlayerController controller) {
         this.controller = controller;
         this.model = model;
         setTitle("Poool");
