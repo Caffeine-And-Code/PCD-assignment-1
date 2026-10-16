@@ -1,7 +1,6 @@
 package pcd.poool.vnativethreads.view;
 
 import pcd.poool.vnativethreads.controller.*;
-import pcd.poool.vnativethreads.model.Board;
 import pcd.poool.vnativethreads.model.GameStatus;
 
 import javax.swing.*;
@@ -86,6 +85,13 @@ public class ViewFrame extends JFrame {
                     y + (metrics.getAscent() - metrics.getDescent()) / 2);
         }
 
+        private void paintHole(HoleViewInfo hole, Graphics2D g) {
+            int x = (int) (ox + hole.center().x() * delta);
+            int y = (int) (oy - hole.center().y() * delta);
+            int radius = (int) (hole.radius() * delta);
+            g.fillOval(x - radius, y - radius, 2 * radius, 2 * radius);
+        }
+
         private void paintScore(String score, int x, int y, Graphics2D g) {
             var previousFont = g.getFont();
             g.setFont(previousFont.deriveFont(Font.PLAIN, 72f));
@@ -106,10 +112,10 @@ public class ViewFrame extends JFrame {
                     RenderingHints.VALUE_RENDER_QUALITY);
             g2.clearRect(0, 0, this.getWidth(), this.getHeight());
 
-            int holeRadius = (int) (Board.HOLE_RADIUS * delta);
             g2.setColor(Color.BLACK);
-            g2.fillOval(-holeRadius, -holeRadius, 2 * holeRadius, 2 * holeRadius);
-            g2.fillOval(getWidth() - holeRadius, -holeRadius, 2 * holeRadius, 2 * holeRadius);
+            for (var hole : model.getHoles()) {
+                paintHole(hole, g2);
+            }
 
             g2.setColor(Color.LIGHT_GRAY);
             g2.setStroke(new BasicStroke(1));
@@ -140,8 +146,8 @@ public class ViewFrame extends JFrame {
 
             g2.setStroke(new BasicStroke(1));
             g2.setColor(Color.DARK_GRAY);
-            g2.drawString("Num small balls: " + model.getBalls().size(), holeRadius + 20, 30);
-            g2.drawString("Frame per sec: " + model.getFramePerSec(), holeRadius + 20, 50);
+            g2.drawString("Num small balls: " + model.getBalls().size(), ox + 20, 30);
+            g2.drawString("Frame per sec: " + model.getFramePerSec(), ox + 20, 50);
             g2.setColor(Color.BLACK);
 
             if (model.getStatus() != GameStatus.RUNNING) {

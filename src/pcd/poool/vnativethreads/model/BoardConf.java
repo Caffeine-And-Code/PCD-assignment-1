@@ -15,4 +15,6 @@ public interface BoardConf {
     static Ball getBotBall() {
         return GameFactory.generateBotBall();
     }
+
+    default List<Hole> getHoles() {return GameFactory.generateHoles(getBoardBoundary());}
 }

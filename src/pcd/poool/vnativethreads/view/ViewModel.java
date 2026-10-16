@@ -6,12 +6,10 @@ import pcd.poool.vnativethreads.model.Scene;
 
 import java.util.ArrayList;
 
-record BallViewInfo(P2d pos, double radius) {
-}
-
 public class ViewModel {
 
     private final ArrayList<BallViewInfo> balls;
+    private final ArrayList<HoleViewInfo> holes;
     private BallViewInfo player;
     private BallViewInfo bot;
     private int framePerSec;
@@ -21,6 +19,7 @@ public class ViewModel {
 
     public ViewModel() {
         balls = new ArrayList<>();
+        holes = new ArrayList<>();
         framePerSec = 0;
         status = GameStatus.RUNNING;
     }
@@ -35,6 +34,10 @@ public class ViewModel {
         for (var ball : board.getBalls()) {
             nextBalls.add(new BallViewInfo(ball.getPos(), ball.getRadius()));
         }
+        var nextHoles = new ArrayList<HoleViewInfo>();
+        for (var hole : board.getHoles()) {
+            nextHoles.add(new HoleViewInfo(hole.center(), hole.radius()));
+        }
         var p = board.getPlayerBall();
         var b = board.getBotBall();
         var nextHumanScore = scene.getHumanScore();
@@ -43,6 +46,8 @@ public class ViewModel {
         synchronized (this) {
             balls.clear();
             balls.addAll(nextBalls);
+            holes.clear();
+            holes.addAll(nextHoles);
             player = new BallViewInfo(p.getPos(), p.getRadius());
             bot = new BallViewInfo(b.getPos(), b.getRadius());
             humanScore = nextHumanScore;
@@ -57,6 +62,10 @@ public class ViewModel {
         copy.addAll(balls);
 
         return copy;
+    }
+
+    public synchronized ArrayList<HoleViewInfo> getHoles() {
+        return new ArrayList<>(holes);
     }
 
     public synchronized int getFramePerSec() {

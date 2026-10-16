@@ -4,12 +4,12 @@ import java.util.ArrayList;
 import java.util.List;
 
 public class Board {
-    public static final double HOLE_RADIUS = 0.2;
 
     private List<Ball> balls;
     private Ball playerBall;
     private Ball botBall;
     private Boundary bounds;
+    private List<Hole> holes = List.of();
 
     public Board() {
     }
@@ -18,11 +18,12 @@ public class Board {
         init(conf);
     }
 
-    public Board(List<Ball> balls, Ball playerBall, Ball botBall, Boundary boundary) {
+    public Board(List<Ball> balls, Ball playerBall, Ball botBall, Boundary boundary, List<Hole> holes) {
         this.balls = balls;
         this.playerBall = playerBall;
         this.botBall = botBall;
         this.bounds = boundary;
+        this.holes = holes;
     }
 
     public void init(BoardConf conf) {
@@ -30,6 +31,7 @@ public class Board {
         playerBall = BoardConf.getPlayerBall();
         botBall = BoardConf.getBotBall();
         bounds = conf.getBoardBoundary();
+        holes = conf.getHoles();
     }
 
     public void kickPlayer(V2d impulse) {
@@ -71,16 +73,15 @@ public class Board {
         return bounds;
     }
 
+    public List<Hole> getHoles() {
+        return List.copyOf(holes);
+    }
+
     public boolean isInHole(Ball ball) {
-        double leftDx = ball.getPos().x() - bounds.x0();
-        double rightDx = ball.getPos().x() - bounds.x1();
-        double dy = ball.getPos().y() - bounds.y1();
-        double radiusSquared = HOLE_RADIUS * HOLE_RADIUS;
-        return leftDx * leftDx + dy * dy <= radiusSquared
-                || rightDx * rightDx + dy * dy <= radiusSquared;
+        return holes.stream().anyMatch(hole -> hole.contains(ball));
     }
 
     public Board copy() {
-        return new Board(getBalls(), getPlayerBall(), getBotBall(), getBounds());
+        return new Board(getBalls(), getPlayerBall(), getBotBall(), getBounds(), getHoles());
     }
 }
