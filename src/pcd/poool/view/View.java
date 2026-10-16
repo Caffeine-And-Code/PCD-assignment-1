@@ -1,11 +1,31 @@
 package pcd.poool.view;
 
-import pcd.poool.view.viewmodels.Drawables;
+import pcd.poool.controller.PooolController;
+import pcd.poool.model.Board;
+import pcd.poool.model.BoardObserver;
 
-import java.awt.*;
+public class View implements BoardObserver {
 
-public interface View {
-    void paint(Graphics2D graphics2D, Drawables drawables);
+	private final ViewFrame frame;
+	private final ViewModel viewModel;
+	
+	public View(ViewModel model, int w, int h, PooolController controller) {
+		frame = new ViewFrame(model, w, h, controller);
+		frame.setVisible(true);
+		this.viewModel = model;
+	}
+		
+	public void render() {
+		frame.render();
+	}
+	
+	public ViewModel getViewModel() {
+		return viewModel;
+	}
 
-    void paintStats(Graphics2D graphics2D, int framePerSecond, int nSmallBall);
+    @Override
+    public synchronized void modelUpdate(Board board) {
+        viewModel.update(board);
+        frame.render();
+    }
 }
