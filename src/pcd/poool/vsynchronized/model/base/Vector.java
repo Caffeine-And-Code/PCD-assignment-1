@@ -1,4 +1,4 @@
-package pcd.poool.model.base;
+package pcd.poool.vsynchronized.model.base;
 
 public record Vector(double x, double y) {
     public Vector sum(Vector v) {

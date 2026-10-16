@@ -1,8 +1,8 @@
-package pcd.poool.model.factory;
+package pcd.poool.vsynchronized.model.factory;
 
-import pcd.poool.model.Ball;
-import pcd.poool.model.P2d;
-import pcd.poool.model.V2d;
+import pcd.poool.vsynchronized.model.Ball;
+import pcd.poool.vsynchronized.model.P2d;
+import pcd.poool.vsynchronized.model.V2d;
 
 import java.util.Random;
 
@@ -11,6 +11,7 @@ public abstract class GameFactory {
     public static final double PLAYER_BALL_MASS = 1.5;
     public static final double BALL_RADIUS = 0.01;
     public static final double PLAYER_BALL_RADIUS = 0.05;
+    public static final double GOAL_RADIUS = 0.15;
 
     public static P2d generatePosition() {
         Random rand = new Random();
@@ -29,6 +30,24 @@ public abstract class GameFactory {
                 pos,
                 GameFactory.BALL_RADIUS,
                 GameFactory.BALL_MASS,
+                V2d.empty()
+        );
+    }
+
+    public static Ball generatePlayerGoal() {
+        return new Ball(
+                new P2d(1.5, 1),
+                GameFactory.GOAL_RADIUS,
+                0,
+                V2d.empty()
+        );
+    }
+
+    public static Ball generateBotGoal() {
+        return new Ball(
+                new P2d(-1.5, 1),
+                GameFactory.GOAL_RADIUS,
+                0,
                 V2d.empty()
         );
     }

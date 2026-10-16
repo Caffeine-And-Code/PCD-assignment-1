@@ -1,7 +1,7 @@
-package pcd.poool.controller;
+package pcd.poool.vsynchronized.controller;
 
-import pcd.poool.model.Board;
-import pcd.poool.model.V2d;
+import pcd.poool.vsynchronized.model.Board;
+import pcd.poool.vsynchronized.model.V2d;
 
 public class GoDownCommand implements Command{
 

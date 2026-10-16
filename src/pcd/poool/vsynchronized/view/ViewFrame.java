@@ -1,11 +1,6 @@
-package pcd.poool.view;
+package pcd.poool.vsynchronized.view;
 
-import pcd.poool.controller.GoDownCommand;
-import pcd.poool.controller.GoLeftCommand;
-import pcd.poool.controller.GoUpCommand;
-import pcd.poool.controller.PooolController;
-import pcd.poool.controller.GoRightCommand;
-import pcd.poool.controller.Command;
+import pcd.poool.vsynchronized.controller.*;
 
 import javax.swing.*;
 import java.awt.*;
@@ -36,8 +31,13 @@ public class ViewFrame extends JFrame {
         bind("D", new GoRightCommand());
         setDefaultCloseOperation(JFrame.DISPOSE_ON_CLOSE);
         addWindowListener(new WindowAdapter() {
-            public void windowClosing(WindowEvent ev) { controller.interrupt(); }
-            public void windowClosed(WindowEvent ev) { controller.interrupt(); }
+            public void windowClosing(WindowEvent ev) {
+                controller.interrupt();
+            }
+
+            public void windowClosed(WindowEvent ev) {
+                controller.interrupt();
+            }
         });
     }
 
@@ -67,11 +67,10 @@ public class ViewFrame extends JFrame {
         }
 
 
-
         private void paintBall(BallViewInfo ball, Graphics2D g) {
-            int x = (int)(ox + ball.pos().x() * delta);
-            int y = (int)(oy - ball.pos().y() * delta);
-            int radius = (int)(ball.radius() * delta);
+            int x = (int) (ox + ball.pos().x() * delta);
+            int y = (int) (oy - ball.pos().y() * delta);
+            int radius = (int) (ball.radius() * delta);
             g.drawOval(x - radius, y - radius, 2 * radius, 2 * radius);
         }
 
@@ -94,7 +93,7 @@ public class ViewFrame extends JFrame {
 
             /* Draw Small Balls */
             g2.setStroke(new BasicStroke(1));
-            for (var b : model.getBalls()) {
+            for (var b : model.getBalls().stream().filter((BallViewInfo ball) -> !ball.disabled()).toList()) {
                 paintBall(b, g2);
             }
 
@@ -114,10 +113,26 @@ public class ViewFrame extends JFrame {
                 g2.setPaint(Color.BLACK);
             }
 
+            var botGoal = model.getBotGoal();
+            if (botGoal != null) {
+                paintBall(botGoal, g2);
+            }
+
+            var playerGoal = model.getPlayerGoal();
+            if (playerGoal != null) {
+                paintBall(playerGoal, g2);
+            }
+
             g2.setStroke(new BasicStroke(1));
             g2.drawString("Num small balls: " + model.getBalls().size(), 20, 40);
             g2.drawString("Frame per sec: " + model.getFramePerSec(), 20, 60);
 
+            g2.setFont(new Font("Arial", Font.PLAIN, 84));
+
+            g2.setPaint(Color.BLUE);
+            g2.drawString("H " + String.valueOf(model.getBotScore()), getWidth() / 7, (getHeight() / 4) * 3);
+            g2.drawString("B " + String.valueOf(model.getPlayerScore()), getWidth() / 6 * 5, (getHeight() / 4) * 3);
+            g2.setPaint(Color.BLACK);
         }
 
     }

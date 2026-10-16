@@ -1,5 +1,7 @@
-package pcd.poool.model;
+package pcd.poool.vsynchronized.model;
 
+
+import pcd.poool.vsynchronized.model.factory.GameFactory;
 
 public class Ball {
 
@@ -7,10 +9,11 @@ public class Ball {
     private V2d vel;
     private final double radius;
     private final double mass;
+    private boolean isValidPoint = true;
+    private boolean disabled = false;
 
     private static double FRICTION_FACTOR = 0.25; 	/* 0 minimum */
     private static double RESTITUTION_FACTOR = 1;
-
 
     public Ball(P2d pos, double radius, double mass, V2d vel){
         this.pos = pos;
@@ -20,6 +23,10 @@ public class Ball {
     }
 
     public void updateState(long dt, Board ctx){
+        if (disabled) {
+            return;
+        }
+
         double speed = vel.abs();
         double dt_scaled = dt*0.001;
         if (speed > 0.001) {
@@ -59,19 +66,18 @@ public class Ball {
         }
     }
 
-    /**
-     *
-     * Resolving collision between 2 balls, updating their position and velocity
-     *
-     */
-    public static void resolveCollision(Ball a, Ball b) {
+    private static boolean canBallContributeToScore(Ball a, Ball b) {
+        return a.mass == GameFactory.PLAYER_BALL_MASS && b.mass != GameFactory.PLAYER_BALL_MASS;
+    }
+
+    private static boolean isColliding(Ball a, Ball b) {
 
         /* check if there is a collision */
 
         /* compute dv = b.pos - a.pos vector */
 
-        double dx   = b.pos.x() - a.pos.x();
-        double dy   = b.pos.y() - a.pos.y();
+        double dx = b.pos.x() - a.pos.x();
+        double dy = b.pos.y() - a.pos.y();
         double dist = Math.hypot(dx, dy);
         double minD = a.radius + b.radius;
 
@@ -79,7 +85,43 @@ public class Ball {
          * There is a collision if the distance between the two balls is less than the sum of the radii
          *
          */
-        if (dist < minD && dist > 1e-6)  {
+        return dist < minD && dist > 1e-6;
+    }
+
+    public static boolean resolveCollisionWithGoal(Ball goal, Ball b) {
+        if (isColliding(goal, b) && b.isValidPoint && !b.disabled) {
+            b.disabled = true;
+
+            return true;
+        }
+
+        return false;
+    }
+
+    /**
+     *
+     * Resolving collision between 2 balls, updating their position and velocity
+     *
+     */
+    public static void resolveCollision(Ball a, Ball b) {
+        if (a.disabled || b.disabled) {
+            return;
+        }
+
+        double dx   = b.pos.x() - a.pos.x();
+        double dy   = b.pos.y() - a.pos.y();
+        double dist = Math.hypot(dx, dy);
+        double minD = a.radius + b.radius;
+
+        if (isColliding(a, b)) {
+            if (canBallContributeToScore(a, b)) {
+                b.isValidPoint = true;
+            } else if (canBallContributeToScore(b, a)) {
+                a.isValidPoint = true;
+            } else {
+                a.isValidPoint = false;
+                b.isValidPoint = false;
+            }
 
             /*
              * Collision case - what to do:
@@ -149,4 +191,7 @@ public class Ball {
         return radius;
     }
 
+    public boolean isDisabled() {
+        return disabled;
+    }
 }

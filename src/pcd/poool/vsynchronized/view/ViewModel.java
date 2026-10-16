@@ -1,17 +1,22 @@
-package pcd.poool.view;
+package pcd.poool.vsynchronized.view;
 
-import pcd.poool.model.Board;
-import pcd.poool.model.P2d;
+import pcd.poool.vsynchronized.model.Board;
+import pcd.poool.vsynchronized.model.P2d;
 
 import java.util.ArrayList;
 
-record BallViewInfo(P2d pos, double radius) {}
+record BallViewInfo(P2d pos, double radius, boolean disabled) {
+}
 
 public class ViewModel {
 
 	private final ArrayList<BallViewInfo> balls;
 	private BallViewInfo player;
 	private BallViewInfo bot;
+	private BallViewInfo playerGoal;
+	private BallViewInfo botGoal;
+	private int playerScore;
+	private int botScore;
 	private int framePerSec;
 	
 	public ViewModel() {
@@ -32,13 +37,21 @@ public class ViewModel {
     private synchronized void update(Board.State state, int framePerSec) {
 		balls.clear();
 		for (var b: state.balls()) {
-			balls.add(new BallViewInfo(b.pos(), b.radius()));
+			balls.add(new BallViewInfo(b.pos(), b.radius(), b.isDisabled()));
 		}
 		this.framePerSec = framePerSec;
 		var p = state.player();
-		player = new BallViewInfo(p.pos(), p.radius());
+		player = new BallViewInfo(p.pos(), p.radius(), p.isDisabled());
 		p = state.bot();
-		bot = new BallViewInfo(p.pos(), p.radius());
+		bot = new BallViewInfo(p.pos(), p.radius(), p.isDisabled());
+		playerScore = state.playerScore();
+		botScore = state.botScore();
+
+		p = state.botGoal();
+		botGoal = new BallViewInfo(p.pos(), p.radius(), p.isDisabled());
+
+		p = state.playerGoal();
+		playerGoal = new BallViewInfo(p.pos(), p.radius(), p.isDisabled());
 	}
 	
 	public synchronized ArrayList<BallViewInfo> getBalls(){
@@ -59,5 +72,20 @@ public class ViewModel {
 	public synchronized BallViewInfo getBotBall() {
 		return bot;
 	}
-	
+
+	public int getPlayerScore() {
+		return playerScore;
+	}
+
+	public int getBotScore() {
+		return botScore;
+	}
+
+	public BallViewInfo getPlayerGoal() {
+		return playerGoal;
+	}
+
+	public BallViewInfo getBotGoal() {
+		return botGoal;
+	}
 }

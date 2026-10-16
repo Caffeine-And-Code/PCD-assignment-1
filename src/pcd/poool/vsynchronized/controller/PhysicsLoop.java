@@ -1,6 +1,6 @@
-package pcd.poool.controller;
+package pcd.poool.vsynchronized.controller;
 
-import pcd.poool.model.Board;
+import pcd.poool.vsynchronized.model.Board;
 
 /** Dedicated physics thread. Board serializes physics, commands and snapshots. */
 public class PhysicsLoop extends Thread {

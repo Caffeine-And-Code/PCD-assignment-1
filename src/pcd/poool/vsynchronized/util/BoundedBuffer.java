@@ -1,4 +1,4 @@
-package pcd.poool.util;
+package pcd.poool.vsynchronized.util;
 
 public interface BoundedBuffer<Item> {
 

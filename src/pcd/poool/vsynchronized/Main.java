@@ -1,11 +1,11 @@
-package pcd.poool;
+package pcd.poool.vsynchronized;
 
-import pcd.poool.controller.PhysicsLoop;
-import pcd.poool.controller.PooolController;
-import pcd.poool.model.Board;
-import pcd.poool.model.MassiveBoardConf;
-import pcd.poool.view.View;
-import pcd.poool.view.ViewModel;
+import pcd.poool.vsynchronized.controller.PhysicsLoop;
+import pcd.poool.vsynchronized.controller.PooolController;
+import pcd.poool.vsynchronized.model.Board;
+import pcd.poool.vsynchronized.model.MassiveBoardConf;
+import pcd.poool.vsynchronized.view.View;
+import pcd.poool.vsynchronized.view.ViewModel;
 
 import javax.swing.*;
 

@@ -1,6 +1,6 @@
-package pcd.poool.model;
+package pcd.poool.vsynchronized.model;
 
-import pcd.poool.model.factory.GameFactory;
+import pcd.poool.vsynchronized.model.factory.GameFactory;
 
 import java.util.ArrayList;
 import java.util.List;

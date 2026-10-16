@@ -1,4 +1,4 @@
-package pcd.poool.view;
+package pcd.poool.vsynchronized.view;
 
 public class RenderSynch {
 

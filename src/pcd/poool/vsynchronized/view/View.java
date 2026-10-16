@@ -1,8 +1,8 @@
-package pcd.poool.view;
+package pcd.poool.vsynchronized.view;
 
-import pcd.poool.controller.PooolController;
-import pcd.poool.model.Board;
-import pcd.poool.model.BoardObserver;
+import pcd.poool.vsynchronized.controller.PooolController;
+import pcd.poool.vsynchronized.model.Board;
+import pcd.poool.vsynchronized.model.BoardObserver;
 
 public class View implements BoardObserver {
 

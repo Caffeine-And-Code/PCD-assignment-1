@@ -1,8 +1,8 @@
-package pcd.poool.controller;
+package pcd.poool.vsynchronized.controller;
 
-import pcd.poool.model.Board;
-import pcd.poool.util.BoundedBuffer;
-import pcd.poool.util.BoundedBufferImpl;
+import pcd.poool.vsynchronized.model.Board;
+import pcd.poool.vsynchronized.util.BoundedBuffer;
+import pcd.poool.vsynchronized.util.BoundedBufferImpl;
 
 
 public class PooolController extends Thread {

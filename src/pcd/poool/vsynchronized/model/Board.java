@@ -1,7 +1,8 @@
-package pcd.poool.model;
+package pcd.poool.vsynchronized.model;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Random;
 import java.util.concurrent.locks.ReentrantLock;
 
 /**
@@ -13,7 +14,11 @@ public class Board {
     private Ball playerBall;
     private Ball botBall;
     private Boundary bounds;
+    private int playerScore;
+    private int botScore;
     private int framePerSec;
+    private Ball playerGoal;
+    private Ball botGoal;
     private final List<BoardObserver> observers = new ArrayList<>();
 
     public void init(BoardConf conf) {
@@ -25,6 +30,10 @@ public class Board {
             playerBall = BoardConf.getPlayerBall();
             botBall = BoardConf.getBotBall();
             bounds = conf.getBoardBoundary();
+            botScore = 0;
+            playerScore = 0;
+            playerGoal = BoardConf.getPlayerGoal();
+            botGoal = BoardConf.getBotGoal();
         } finally {
             lock.unlock();
         }
@@ -39,19 +48,8 @@ public class Board {
         }
     }
 
-    // Like sketch02, callbacks run while holding the model lock.
-    // Reentrancy allows observers to call snapshot() on this same thread.
     private void notifyObservers() {
         for (var observer : observers) observer.modelUpdate(this);
-    }
-
-    public void updateState(long dt) throws InterruptedException {
-        lock.lockInterruptibly();
-        try {
-            updateState(dt, framePerSec);
-        } finally {
-            lock.unlock();
-        }
     }
 
     public void updateState(long dt, int framePerSec) throws InterruptedException {
@@ -59,6 +57,20 @@ public class Board {
         try {
             this.framePerSec = framePerSec;
             playerBall.updateState(dt, this);
+            if (framePerSec % 2 != 0) {
+                var random = new Random();
+                var x = random.nextDouble();
+                var y = random.nextDouble();
+
+                if (random.nextBoolean()) {
+                    x = -x;
+                }
+                if (random.nextBoolean()) {
+                    y = -y;
+                }
+
+                botBall.kick(new V2d(x, y));
+            }
             botBall.updateState(dt, this);
             for (var ball : balls) ball.updateState(dt, this);
             for (int i = 0; i < balls.size() - 1; i++) {
@@ -71,6 +83,14 @@ public class Board {
                 Ball.resolveCollision(botBall, ball);
             }
             Ball.resolveCollision(playerBall, botBall);
+            for (var ball : balls) {
+                if (Ball.resolveCollisionWithGoal(playerGoal, ball)) {
+                    playerScore++;
+                }
+                if (Ball.resolveCollisionWithGoal(botGoal, ball)) {
+                    botScore++;
+                }
+            }
             notifyObservers();
         } finally {
             lock.unlock();
@@ -87,13 +107,14 @@ public class Board {
         }
     }
 
-    public record BallState(P2d pos, double radius) {
+    public record BallState(P2d pos, double radius, boolean isDisabled) {
         private static BallState of(Ball ball) {
-            return new BallState(ball.getPos(), ball.getRadius());
+            return new BallState(ball.getPos(), ball.getRadius(), ball.isDisabled());
         }
     }
 
-    public record State(List<BallState> balls, BallState player, BallState bot, int framePerSec) {
+    public record State(List<BallState> balls, BallState player, BallState bot, int playerScore, int botScore,
+                        BallState playerGoal, BallState botGoal, int framePerSec) {
         public State {
             balls = List.copyOf(balls);
         }
@@ -102,8 +123,15 @@ public class Board {
     public State snapshot() {
         lock.lock();
         try {
-            return new State(balls.stream().map(BallState::of).toList(),
-                    BallState.of(playerBall), BallState.of(botBall), framePerSec);
+            return new State(
+                    balls.stream().map(BallState::of).toList(),
+                    BallState.of(playerBall),
+                    BallState.of(botBall),
+                    playerScore, botScore,
+                    BallState.of(playerGoal),
+                    BallState.of(botGoal),
+                    framePerSec
+            );
         } finally {
             lock.unlock();
         }
