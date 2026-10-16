@@ -64,16 +64,22 @@ quindi ogni coppia è visitata una sola volta.
 - **Limite noto.** Il rilevamento resta O (N²). Una griglia spaziale ridurrebbe i controlli alle sole palline vicine e
   può essere proposta come ottimizzazione da confrontare nei test.
 
-## Le due versioni
+## Le tre versioni
 
-- **Versione 0 (versione sincrona)**: un thread per la grafica (JavaFx Thread) ed un thread per la logica quale update e
+- **Versione 0 (versione sincrona) <a>[vsynchronized]</a>**: un thread per la grafica (JavaFx Thread) ed un thread per
+  la logica quale update e
   collisioni
-- **Versione 1 (thread di piattaforma)**: *n* worker fissi coordinati dalla barriera, più thread separati per bot e
+- **Versione 1 (thread di piattaforma) <a>[vnativethreads]</a>**: *n* worker fissi coordinati dalla barriera, più thread
+  separati per bot e
   simulazione.
-- **Versione 2 (Executor Framework)**: ogni fase diventa *n* task (uno per resto `w`) su un pool a dimensione fissa, con
+- **Versione 2 (Executor Framework) <a>[vjavaexecutorframework]</a>**: ogni fase diventa *n* task (uno per resto `w`) su
+  un pool a dimensione fissa, con
   attesa dei `Future` al posto della barriera; il bot è un task periodico.
 
 ## Architecture
+
+Tutte e tre le versioni sono state scritte secondo il paradigma Model-View-Controller (MVC), permettendo una corretta
+gestione ed incapsulamento della logica e della grafica.
 
 ## Performance Tests With Results
 
