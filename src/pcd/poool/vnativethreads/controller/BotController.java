@@ -5,18 +5,23 @@ import pcd.poool.vnativethreads.model.V2d;
 
 import java.util.Random;
 
-public class BotPlayer extends Thread {
+import java.util.function.Consumer;
+
+public class BotController extends Thread {
     private static final long THINK_TIME = 700;
     private final Scene scene;
+    private final Consumer<Throwable> onTermination;
     private final Random random = new Random();
 
-    public BotPlayer(Scene scene) {
+    public BotController(Scene scene, Consumer<Throwable> onTermination) {
         super("poool-bot");
         this.scene = scene;
+        this.onTermination = onTermination;
     }
 
     @Override
     public void run() {
+        Throwable failure = null;
         try {
             while (!isInterrupted() && !scene.isStopped() && !scene.isGameOver()) {
                 Thread.sleep(THINK_TIME);
@@ -39,6 +44,11 @@ public class BotPlayer extends Thread {
             }
         } catch (InterruptedException ex) {
             interrupt();
+        } catch (Exception ex) {
+            failure = ex;
+            throw ex;
+        } finally {
+            onTermination.accept(failure);
         }
     }
 }

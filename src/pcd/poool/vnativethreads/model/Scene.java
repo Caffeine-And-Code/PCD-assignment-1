@@ -133,14 +133,26 @@ public class Scene {
     }
 
     public boolean isGameOver() {
-        return getStatus() != GameStatus.RUNNING && getStatus() != GameStatus.IN_EXCEPTION;
+        var current = getStatus();
+        return current != GameStatus.RUNNING && current != GameStatus.IN_EXCEPTION;
     }
 
     public boolean isStopped() {
         return getStatus() != GameStatus.RUNNING;
     }
 
-    public void setInException(){
-        status = GameStatus.IN_EXCEPTION;
+    public void setInException() {
+        lock.lock();
+        try { status = GameStatus.IN_EXCEPTION; }
+        finally { lock.unlock(); }
+    }
+
+    public void setInExceptionIfRunning() {
+        lock.lock();
+        try {
+            if(status == GameStatus.RUNNING)
+                status = GameStatus.IN_EXCEPTION;
+        }
+        finally { lock.unlock(); }
     }
 }

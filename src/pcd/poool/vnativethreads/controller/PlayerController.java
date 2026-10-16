@@ -4,27 +4,23 @@ import pcd.poool.vnativethreads.model.Scene;
 import pcd.poool.vnativethreads.util.BoundedBuffer;
 import pcd.poool.vnativethreads.util.BoundedBufferImpl;
 
+import java.util.function.Consumer;
 
 public class PlayerController extends Thread {
     private static final int BUFFER_SIZE = 200;
     private final BoundedBuffer<Command> buffer = new BoundedBufferImpl<>(BUFFER_SIZE);
     private final Scene scene;
-    private PhysicsLoop physics;
-    private BotPlayer bot;
+    private final Consumer<Throwable> onTermination;
 
-    public PlayerController(Scene scene) {
+    public PlayerController(Scene scene, Consumer<Throwable> onTermination) {
         super("poool-commands");
         this.scene = scene;
+        this.onTermination = onTermination;
     }
 
-    // Called during initialization, before start().
-    public void setGameThreads(PhysicsLoop physics, BotPlayer bot) {
-        this.physics = physics;
-        this.bot = bot;
-        physics.setOnTermination(this::interrupt);
-    }
-
+    @Override
     public void run() {
+        Throwable failure = null;
         try {
             while (!isInterrupted() && !scene.isStopped()) {
                 Command command = buffer.get();
@@ -33,10 +29,11 @@ public class PlayerController extends Thread {
             }
         } catch (InterruptedException ex) {
             interrupt();
+        } catch (Throwable ex) {
+            failure = ex;
+            throw ex;
         } finally {
-            scene.setInException();
-            if (physics != null) physics.interrupt();
-            if (bot != null) bot.interrupt();
+            onTermination.accept(failure);
         }
     }
 

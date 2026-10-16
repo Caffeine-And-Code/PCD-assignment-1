@@ -9,8 +9,8 @@ public class View implements BoardObserver {
     private final ViewFrame frame;
     private final ViewModel viewModel;
 
-    public View(ViewModel model, int w, int h, PlayerController controller) {
-        frame = new ViewFrame(model, w, h, controller);
+    public View(ViewModel model, int w, int h, PlayerController controller, Runnable onClose) {
+        frame = new ViewFrame(model, w, h, controller, onClose);
         frame.setVisible(true);
         this.viewModel = model;
     }

@@ -14,7 +14,7 @@ public class ViewFrame extends JFrame {
     private final ViewModel model;
     private final PlayerController controller;
 
-    public ViewFrame(ViewModel model, int w, int h, PlayerController controller) {
+    public ViewFrame(ViewModel model, int w, int h, PlayerController controller, Runnable onClose) {
         this.controller = controller;
         this.model = model;
         setTitle("Poool");
@@ -33,11 +33,11 @@ public class ViewFrame extends JFrame {
         setDefaultCloseOperation(JFrame.DISPOSE_ON_CLOSE);
         addWindowListener(new WindowAdapter() {
             public void windowClosing(WindowEvent ev) {
-                controller.interrupt();
+                onClose.run();
             }
 
             public void windowClosed(WindowEvent ev) {
-                controller.interrupt();
+                onClose.run();
             }
         });
     }

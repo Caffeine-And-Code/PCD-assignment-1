@@ -9,13 +9,15 @@ import java.util.List;
 import java.util.concurrent.CyclicBarrier;
 import java.util.concurrent.Semaphore;
 
+import java.util.function.Consumer;
+
 public class PhysicsLoop extends Thread {
     private final Scene scene;
+    private final Consumer<Throwable> onTermination;
     private final Thread[] workers;
     private final Semaphore[] start;
     private final Semaphore finished = new Semaphore(0);
     private final CyclicBarrier movementDone;
-    private Runnable onTermination = () -> {};
     private long elapsed;
     private List<Ball> balls;
     private List<List<Integer>> collisions;
@@ -23,9 +25,10 @@ public class PhysicsLoop extends Thread {
     // Ogni worker scrive solo nella propria posizione se ha avuto un eccezione
     private Throwable[] failures;
 
-    public PhysicsLoop(Scene scene, int workerCount) {
+    public PhysicsLoop(Scene scene, int workerCount, Consumer<Throwable> onTermination) {
         if (workerCount <= 0) throw new IllegalArgumentException("workerCount must be positive");
         this.scene = scene;
+        this.onTermination = onTermination;
         workers = new Thread[workerCount];
         start = new Semaphore[workerCount];
         movementDone = new CyclicBarrier(workerCount);
@@ -38,6 +41,7 @@ public class PhysicsLoop extends Thread {
 
     @Override
     public void run() {
+        Throwable failure = null;
         try {
             if (isInterrupted()) return;
             for (Thread worker : workers) worker.start();
@@ -54,18 +58,16 @@ public class PhysicsLoop extends Thread {
             }
         } catch (InterruptedException ex) {
             interrupt();
+        } catch (Throwable ex) {
+            failure = ex;
+            throw ex;
         } finally {
-            scene.setInException();
             try {
-                onTermination.run();
+                onTermination.accept(failure);
             } finally {
                 stopWorkers();
             }
         }
-    }
-
-    public void setOnTermination(Runnable onTermination) {
-        this.onTermination = onTermination;
     }
 
     private void stopWorkers() {
@@ -93,7 +95,13 @@ public class PhysicsLoop extends Thread {
             failures = new Throwable[workers.length];
             for (Semaphore signal : start) signal.release();
             // Aspetto che tutti i worker abbiano finito usando un semaforo.
-            finished.acquireUninterruptibly(workers.length);
+            try {
+                finished.acquire(workers.length);
+            } catch (InterruptedException ex) {
+                // Finish cancellation before releasing Scene's lock and tick data.
+                stopWorkers();
+                throw ex;
+            }
             // se un worker è andato in eccezione allora termino il thread della fisica
             for (Throwable failure : failures) {
                 if (failure != null) throw new IllegalStateException("Physics worker failed", failure);
@@ -129,7 +137,7 @@ public class PhysicsLoop extends Thread {
                         for (int i = id; i < balls.size(); i += workers.length) {
                             balls.get(i).updateState(elapsed, bounds);
                         }
-                    }catch (Exception ex){
+                    } catch (Throwable ex) {
                         failures[id] = ex;
                     }
                     // Aspetto che tutti i worker finiscano la prima fase
@@ -146,6 +154,9 @@ public class PhysicsLoop extends Thread {
                             }
                         }
                     }
+                } catch (InterruptedException ex) {
+                    Thread.currentThread().interrupt();
+                    return;
                 } catch (Throwable ex) {
                     if (failures[id] == null) failures[id] = ex;
                 } finally {
