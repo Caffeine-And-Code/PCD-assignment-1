@@ -64,22 +64,44 @@ quindi ogni coppia è visitata una sola volta.
 - **Limite noto.** Il rilevamento resta O (N²). Una griglia spaziale ridurrebbe i controlli alle sole palline vicine e
   può essere proposta come ottimizzazione da confrontare nei test.
 
-## Le tre versioni
+## Architettura
 
-- **Versione 0 (versione sincrona) <a>[vsynchronized]</a>**: un thread per la grafica (JavaFx Thread) ed un thread per
-  la logica quale update e
-  collisioni
-- **Versione 1 (thread di piattaforma) <a>[vnativethreads]</a>**: *n* worker fissi coordinati dalla barriera, più thread
-  separati per bot e
-  simulazione.
-- **Versione 2 (Executor Framework) <a>[vjavaexecutorframework]</a>**: ogni fase diventa *n* task (uno per resto `w`) su
-  un pool a dimensione fissa, con
-  attesa dei `Future` al posto della barriera; il bot è un task periodico.
+Il progetto è organizzato secondo il pattern **Model-View-Controller (MVC)**, mantenendo separati la logica di gioco, la
+gestione degli input e la rappresentazione grafica. Questa struttura viene mantenuta in tutte e tre le versioni, che si
+differenziano per le modalità di gestione della concorrenza.
 
-## Architecture
+Nella **versione
+0 ([vsynchronized](https://github.com/Caffeine-And-Code/PCD-assignment-1/tree/d7be7ddd448c2c60d066f1e16673c332c3f10349/src/pcd/poool/vsynchronized))**,
+l'architettura è suddivisa nei seguenti componenti:
 
-Tutte e tre le versioni sono state scritte secondo il paradigma Model-View-Controller (MVC), permettendo una corretta
-gestione ed incapsulamento della logica e della grafica.
+- **Model (`model`)**: contiene le entità del gioco e la logica fisica. La classe `Board` rappresenta lo stato condiviso
+  e agisce da monitor tramite un `ReentrantLock`, garantendo l'accesso mutuamente esclusivo durante gli aggiornamenti
+  della simulazione, l'applicazione degli impulsi e la creazione degli snapshot.
+- **View (`view`)**: gestisce la rappresentazione grafica tramite Swing. La classe `View` implementa `BoardObserver` e
+  riceve le notifiche di aggiornamento dal Model. Il `ViewModel` mantiene una copia dei dati necessari al rendering,
+  ottenuta attraverso gli snapshot del `Board`.
+- **Controller (`controller`)**: gestisce gli input e l'esecuzione della simulazione. `PooolController` riceve i comandi
+  della tastiera attraverso un buffer limitato thread-safe, mentre `PhysicsLoop` esegue gli aggiornamenti fisici su un
+  thread dedicato.
+
+La versione sincrona costituisce la base di riferimento: il calcolo fisico viene eseguito sequenzialmente da un unico
+thread, mentre la gestione dei comandi e la GUI operano su thread separati. La sincronizzazione degli accessi allo stato
+condiviso è centralizzata nel `Board`.
+
+Le altre due versioni mantengono la stessa organizzazione MVC, introducendo differenti strategie per parallelizzare il
+calcolo:
+
+- **Versione
+  1 ([vnativethreads](https://github.com/Caffeine-And-Code/PCD-assignment-1/tree/d7be7ddd448c2c60d066f1e16673c332c3f10349/src/pcd/poool/vnativethreads))**:
+  utilizza un numero fisso di thread di piattaforma per distribuire il lavoro, coordinati mediante una barriera tra le
+  fasi della simulazione.
+- **Versione
+  2 ([vjavaexecutorframework](https://github.com/Caffeine-And-Code/PCD-assignment-1/tree/d7be7ddd448c2c60d066f1e16673c332c3f10349/src/pcd/poool/vjavaexecutorframework))**:
+  utilizza l'Executor Framework per eseguire le fasi di calcolo come task su un pool di thread, attendendone il
+  completamento tramite `Future`.
+
+Questa organizzazione permette di confrontare le diverse strategie di esecuzione mantenendo una separazione coerente tra
+le responsabilità dei componenti.
 
 ## Performance Tests With Results
 
