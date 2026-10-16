@@ -69,13 +69,13 @@ calcolo:
 
 #### Thread in gioco
 
-| Thread           | Classe                         | Ruolo                                                                                                                                            |
-|------------------|--------------------------------|--------------------------------------------------------------------------------------------------------------------------------------------------|
-| EDT di Swing     | `ViewFrame`                    | cattura i tasti e li consegna al controller con `offer` (non bloccante: se il buffer è pieno il comando viene scartato, per non bloccare la GUI) |
-| `poool-commands` | `PooolController`              | preleva i comandi dal buffer ed esegue l'impulso sul giocatore                                                                                   |
-| `poool-bot`      | `BotPlayer`                    | ogni 700 ms sceglie una pallina a caso e applica un impulso verso di essa                                                                        |
-| coordinatore     | `PhysicsLoop`                  | esegue il ciclo di simulazione e coordina i worker                                                                                               |
-| worker 1..n      | thread creati da `PhysicsLoop` | eseguono in parallelo integrazione e rilevamento collisioni                                                                                      |
+| Thread             | Classe                         | Ruolo                                                                                                                                            |
+|--------------------|--------------------------------|--------------------------------------------------------------------------------------------------------------------------------------------------|
+| EDT di Swing       | `ViewFrame`                    | cattura i tasti e li consegna al controller con `offer` (non bloccante: se il buffer è pieno il comando viene scartato, per non bloccare la GUI) |
+| `poool - commands` | `PooolController`              | preleva i comandi dal buffer ed esegue l'impulso sul giocatore                                                                                   |
+| `poool - bot`      | `BotPlayer`                    | ogni 700 ms sceglie una pallina a caso e applica un impulso verso di essa                                                                        |
+| coordinatore       | `PhysicsLoop`                  | esegue il ciclo di simulazione e coordina i worker                                                                                               |
+| worker 1..n        | thread creati da `PhysicsLoop` | eseguono in parallelo integrazione e rilevamento collisioni                                                                                      |
 
 Il numero di worker è un parametro (argomento da riga di comando); di default vale `availableProcessors() - 1`
 (minimo 1), lasciando un core al coordinatore e alla GUI.
