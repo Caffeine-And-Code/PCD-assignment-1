@@ -146,8 +146,8 @@ public class ViewFrame extends JFrame {
 
             g2.setStroke(new BasicStroke(1));
             g2.setColor(Color.DARK_GRAY);
-            g2.drawString("Num small balls: " + model.getBalls().size(), ox + 20, 30);
-            g2.drawString("Frame per sec: " + model.getFramePerSec(), ox + 20, 50);
+            g2.drawString("Num small balls: " + model.getBalls().size(), 80, 40);
+            g2.drawString("Frame per sec: " + model.getFramePerSec(), 80, 60);
             g2.setColor(Color.BLACK);
 
             if (model.getStatus() != GameStatus.RUNNING) {
