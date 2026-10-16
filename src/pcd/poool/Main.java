@@ -1,15 +1,16 @@
 package pcd.poool;
 
-import javax.swing.SwingUtilities;
-import pcd.poool.controller.PooolController;
 import pcd.poool.controller.PhysicsLoop;
+import pcd.poool.controller.PooolController;
 import pcd.poool.model.Board;
 import pcd.poool.model.MassiveBoardConf;
 import pcd.poool.view.View;
 import pcd.poool.view.ViewModel;
 
+import javax.swing.*;
+
 public class Main {
-    public static void main(String[] args) {
+    static void main() {
         SwingUtilities.invokeLater(() -> {
             Board board = new Board();
             board.init(new MassiveBoardConf());

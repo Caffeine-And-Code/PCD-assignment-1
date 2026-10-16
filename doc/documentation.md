@@ -66,6 +66,8 @@ quindi ogni coppia è visitata una sola volta.
 
 ## Le due versioni
 
+- **Versione 0 (versione sincrona)**: un thread per la grafica (JavaFx Thread) ed un thread per la logica quale update e
+  collisioni
 - **Versione 1 (thread di piattaforma)**: *n* worker fissi coordinati dalla barriera, più thread separati per bot e
   simulazione.
 - **Versione 2 (Executor Framework)**: ogni fase diventa *n* task (uno per resto `w`) su un pool a dimensione fissa, con
