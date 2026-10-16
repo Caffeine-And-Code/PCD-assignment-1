@@ -1,29 +1,42 @@
 package pcd.poool.controller;
 
-import pcd.sketch02.util.BoundedBuffer;
-import pcd.sketch02.util.BoundedBufferImpl;
+import pcd.poool.model.Board;
+import pcd.poool.util.BoundedBuffer;
+import pcd.poool.util.BoundedBufferImpl;
+
 
 public class PooolController extends Thread {
+    private static final int BUFFER_SIZE = 200;
+    private final BoundedBuffer<Command> buffer = new BoundedBufferImpl<>(BUFFER_SIZE);
+    private final Board board;
+    private PhysicsLoop physics;
 
-    private final BoundedBuffer<Command> buffer;
-
-    public PooolController(){
-        int bufferSize = 200;
-        this.buffer = new BoundedBufferImpl<>(bufferSize);
+    public PooolController(Board board) {
+        super("poool-commands");
+        this.board = board;
     }
 
-    public void run(){
-        while(true){
-            try {
-                Command command = this.buffer.get();
-                command.execute();
-            } catch (InterruptedException e) {
-                throw new RuntimeException(e);
+    // Called during initialization, before start().
+    public void setPhysicsLoop(PhysicsLoop physics) {
+        this.physics = physics;
+    }
+
+    public void run() {
+        try {
+            while (!isInterrupted()) {
+                Command command = buffer.get();
+                if (isInterrupted()) break;
+                command.execute(board);
             }
+        } catch (InterruptedException ex) {
+            interrupt();
+        } finally {
+            if (physics != null) physics.interrupt();
         }
     }
 
-    public void notifyNewCommand(Command command) throws InterruptedException {
-        this.buffer.put(command);
+    // Full buffer: discard the new command rather than block Swing's EDT.
+    public boolean notifyNewCommand(Command command) {
+        return buffer.offer(command);
     }
 }

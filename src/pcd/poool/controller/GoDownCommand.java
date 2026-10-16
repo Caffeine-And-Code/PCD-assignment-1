@@ -1,9 +1,12 @@
 package pcd.poool.controller;
 
+import pcd.poool.model.Board;
+import pcd.poool.model.V2d;
+
 public class GoDownCommand implements Command{
 
     @Override
-    public void execute() {
-        throw new IllegalArgumentException("Bel me serve el model");
+    public void execute(Board board) throws InterruptedException {
+        board.kickPlayer(new V2d(0, -Command.UPDATE_STEP));
     }
 }
