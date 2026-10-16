@@ -18,8 +18,9 @@ public class BotPlayer extends Thread {
     @Override
     public void run() {
         try {
-            while (!isInterrupted() && !scene.isGameOver()) {
+            while (!isInterrupted() && !scene.isStopped() && !scene.isGameOver()) {
                 Thread.sleep(THINK_TIME);
+                if (scene.isStopped() || scene.isGameOver()) return;
                 var boardCopy = scene.getBoard();
                 var balls = boardCopy.getBalls();
                 if (balls.isEmpty()) return;

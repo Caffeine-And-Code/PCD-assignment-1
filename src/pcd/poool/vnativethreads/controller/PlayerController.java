@@ -21,11 +21,12 @@ public class PlayerController extends Thread {
     public void setGameThreads(PhysicsLoop physics, BotPlayer bot) {
         this.physics = physics;
         this.bot = bot;
+        physics.setOnTermination(this::interrupt);
     }
 
     public void run() {
         try {
-            while (!isInterrupted()) {
+            while (!isInterrupted() && !scene.isStopped()) {
                 Command command = buffer.get();
                 if (isInterrupted()) break;
                 command.execute(scene);
@@ -33,6 +34,7 @@ public class PlayerController extends Thread {
         } catch (InterruptedException ex) {
             interrupt();
         } finally {
+            scene.setInException();
             if (physics != null) physics.interrupt();
             if (bot != null) bot.interrupt();
         }
@@ -40,6 +42,6 @@ public class PlayerController extends Thread {
 
     // Full buffer: discard the new command rather than block Swing's EDT.
     public boolean notifyNewCommand(Command command) {
-        return buffer.offer(command);
+        return !isInterrupted() && !scene.isStopped() && buffer.offer(command);
     }
 }

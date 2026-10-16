@@ -4,7 +4,6 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.locks.ReentrantLock;
 import java.util.function.Consumer;
-import java.util.function.Function;
 
 public class Scene {
 
@@ -14,6 +13,20 @@ public class Scene {
     private int botScore;
     private GameStatus status;
     private int fps;
+
+    @FunctionalInterface
+    public interface PhysicsUpdate {
+        int apply(Board board) throws InterruptedException;
+    }
+
+    public record Snapshot(Board board, int humanScore, int botScore, GameStatus status, int fps) {}
+
+    public Snapshot snapshot() {
+        lock.lock();
+        try { return new Snapshot(getBoard(), humanScore, botScore, status, fps); }
+        finally { lock.unlock(); }
+    }
+
     private final List<BoardObserver> observers = new ArrayList<>();
 
     public Scene() {
@@ -45,12 +58,14 @@ public class Scene {
         for (var observer : observers) observer.modelUpdate(this);
     }
 
-    public void updateBoardPhysics(Function<Board, Integer> physics) throws InterruptedException {
+    public void updateBoardPhysics(PhysicsUpdate physics) throws InterruptedException {
         lock.lockInterruptibly();
         try {
-            if (status != GameStatus.RUNNING) return;
+            if (isStopped()) return;
             var boardCopy = board.copy();
-            this.fps = physics.apply(boardCopy);
+            int nextFps = physics.apply(boardCopy);
+            if (isStopped() || Thread.currentThread().isInterrupted()) return;
+            this.fps = nextFps;
             var nextBalls = new ArrayList<Ball>();
             for (var ball : boardCopy.getBalls()) {
                 if (board.isInHole(ball)) {
@@ -62,11 +77,7 @@ public class Scene {
             }
             var nextPlayer = boardCopy.getPlayerBall();
             var nextBot = boardCopy.getBotBall();
-            updateBoard((Board board) ->
-                    board.setBalls(nextBalls)
-                            .setPlayerBall(nextPlayer)
-                            .setBotBall(nextBot)
-            );
+            board.setBalls(nextBalls).setPlayerBall(nextPlayer).setBotBall(nextBot);
             updateStatus();
             notifyObservers();
         } finally {
@@ -77,6 +88,7 @@ public class Scene {
     public void updateBoard(Consumer<Board> updateBoard) throws InterruptedException {
         lock.lockInterruptibly();
         try {
+            if (isStopped()) return;
             updateBoard.accept(board);
             notifyObservers();
         } finally {
@@ -111,24 +123,6 @@ public class Scene {
         }
     }
 
-    public int getHumanScore() {
-        lock.lock();
-        try {
-            return humanScore;
-        } finally {
-            lock.unlock();
-        }
-    }
-
-    public int getBotScore() {
-        lock.lock();
-        try {
-            return botScore;
-        } finally {
-            lock.unlock();
-        }
-    }
-
     public GameStatus getStatus() {
         lock.lock();
         try {
@@ -139,11 +133,14 @@ public class Scene {
     }
 
     public boolean isGameOver() {
+        return getStatus() != GameStatus.RUNNING && getStatus() != GameStatus.IN_EXCEPTION;
+    }
+
+    public boolean isStopped() {
         return getStatus() != GameStatus.RUNNING;
     }
 
-    public int getFps() {
-        return this.fps;
+    public void setInException(){
+        status = GameStatus.IN_EXCEPTION;
     }
-
 }

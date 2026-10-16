@@ -1,7 +1,6 @@
 package pcd.poool.vnativethreads.view;
 
 import pcd.poool.vnativethreads.model.GameStatus;
-import pcd.poool.vnativethreads.model.P2d;
 import pcd.poool.vnativethreads.model.Scene;
 
 import java.util.ArrayList;
@@ -24,36 +23,26 @@ public class ViewModel {
         status = GameStatus.RUNNING;
     }
 
-    public synchronized void updateFPS(Integer fps) {
-        this.framePerSec = fps;
-    }
-
     public void update(Scene scene) {
-        var nextBalls = new ArrayList<BallViewInfo>();
-        var board = scene.getBoard();
-        for (var ball : board.getBalls()) {
-            nextBalls.add(new BallViewInfo(ball.getPos(), ball.getRadius()));
-        }
-        var nextHoles = new ArrayList<HoleViewInfo>();
-        for (var hole : board.getHoles()) {
-            nextHoles.add(new HoleViewInfo(hole.center(), hole.radius()));
-        }
-        var p = board.getPlayerBall();
-        var b = board.getBotBall();
-        var nextHumanScore = scene.getHumanScore();
-        var nextBotScore = scene.getBotScore();
-        var nextStatus = scene.getStatus();
+        var state = scene.snapshot();
+        var board = state.board();
+        var ballsFromBoard = board.getBalls().stream()
+                .map(b -> new BallViewInfo(b.getPos(), b.getRadius())).toList();
+        var holesFromBoard = board.getHoles().stream()
+                .map(b -> new HoleViewInfo(b.center(), b.radius())).toList();
+        var playerBall = board.getPlayerBall();
+        var botBall = board.getBotBall();
         synchronized (this) {
             balls.clear();
-            balls.addAll(nextBalls);
+            balls.addAll(ballsFromBoard);
             holes.clear();
-            holes.addAll(nextHoles);
-            player = new BallViewInfo(p.getPos(), p.getRadius());
-            bot = new BallViewInfo(b.getPos(), b.getRadius());
-            humanScore = nextHumanScore;
-            botScore = nextBotScore;
-            status = nextStatus;
-            framePerSec = scene.getFps();
+            holes.addAll(holesFromBoard);
+            player = new BallViewInfo(playerBall.getPos(), playerBall.getRadius());
+            bot = new BallViewInfo(botBall.getPos(), botBall.getRadius());
+            humanScore = state.humanScore();
+            botScore = state.botScore();
+            status = state.status();
+            framePerSec = state.fps();
         }
     }
 

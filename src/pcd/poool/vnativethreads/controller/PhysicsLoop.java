@@ -15,6 +15,7 @@ public class PhysicsLoop extends Thread {
     private final Semaphore[] start;
     private final Semaphore finished = new Semaphore(0);
     private final CyclicBarrier movementDone;
+    private Runnable onTermination = () -> {};
     private long elapsed;
     private List<Ball> balls;
     private List<List<Integer>> collisions;
@@ -43,7 +44,7 @@ public class PhysicsLoop extends Thread {
             long frames = 0;
             long startTime = System.nanoTime();
             long previous = startTime;
-            while (!isInterrupted() && !scene.isGameOver()) {
+            while (!isInterrupted() && !scene.isStopped()) {
                 long now = System.nanoTime();
                 long dt = (now - previous) / 1_000_000;
                 previous += dt * 1_000_000;
@@ -54,19 +55,29 @@ public class PhysicsLoop extends Thread {
         } catch (InterruptedException ex) {
             interrupt();
         } finally {
-            for (Thread worker : workers) worker.interrupt();
-            boolean interrupted = Thread.interrupted();
-            for (Thread worker : workers) {
-                while (worker.isAlive()) {
-                    try {
-                        worker.join();
-                    } catch (InterruptedException ex) {
-                        interrupted = true;
-                    }
-                }
+            scene.setInException();
+            try {
+                onTermination.run();
+            } finally {
+                stopWorkers();
             }
-            if (interrupted) interrupt();
         }
+    }
+
+    public void setOnTermination(Runnable onTermination) {
+        this.onTermination = onTermination;
+    }
+
+    private void stopWorkers() {
+        for (Thread worker : workers) worker.interrupt();
+        boolean interrupted = Thread.interrupted();
+        for (Thread worker : workers) {
+            while (worker.isAlive()) {
+                try { worker.join(); }
+                catch (InterruptedException ex) { interrupted = true; }
+            }
+        }
+        if (interrupted) interrupt();
     }
 
     protected void updateState(long dt, int fps) throws InterruptedException {
@@ -75,7 +86,7 @@ public class PhysicsLoop extends Thread {
             tickBalls.add(board.getPlayerBall());
             tickBalls.add(board.getBotBall());
             balls = tickBalls;
-            bounds = scene.getBoard().getBounds();
+            bounds = board.getBounds();
             elapsed = dt;
             collisions = new ArrayList<>();
             for (int i = 0; i < balls.size(); i++) collisions.add(new ArrayList<>());
@@ -111,11 +122,15 @@ public class PhysicsLoop extends Thread {
 
     private void work(int id) {
         try {
-            while (true) {
+            while (!Thread.currentThread().isInterrupted()) {
                 start[id].acquire();
                 try {
-                    for (int i = id; i < balls.size(); i += workers.length) {
-                        balls.get(i).updateState(elapsed, bounds);
+                    try{
+                        for (int i = id; i < balls.size(); i += workers.length) {
+                            balls.get(i).updateState(elapsed, bounds);
+                        }
+                    }catch (Exception ex){
+                        failures[id] = ex;
                     }
                     // Aspetto che tutti i worker finiscano la prima fase
                     movementDone.await();
@@ -138,7 +153,7 @@ public class PhysicsLoop extends Thread {
                 }
             }
         } catch (InterruptedException ex) {
-            return;
+            Thread.currentThread().interrupt();
         }
     }
 }

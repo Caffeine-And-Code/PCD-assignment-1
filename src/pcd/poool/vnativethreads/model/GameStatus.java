@@ -4,5 +4,6 @@ public enum GameStatus {
     RUNNING,
     HUMAN_WON,
     BOT_WON,
-    DRAW
+    DRAW,
+    IN_EXCEPTION
 }
