@@ -127,7 +127,7 @@ freccia sono archi di sola lettura.
 
 ### Rete 1: un passo di simulazione
 
-![Rete 1](assets/net1_physics_step.png)
+![Simulazione](assets/net1_physics_step.png)
 
 Mostra il fork-join tra coordinatore e worker.
 
@@ -146,7 +146,7 @@ Mostra il fork-join tra coordinatore e worker.
 
 ### Rete 2: giocatori e stato condiviso
 
-![Rete 2](assets/net2_players_lock.png)
+![Giocatori e Stato](assets/net2_players_lock.png)
 
 Mostra come umano, bot e fisica competono per `scene_lock`.
 
@@ -161,7 +161,7 @@ Mostra come umano, bot e fisica competono per `scene_lock`.
 
 ### Rete 3: terminazione
 
-![Rete 3](assets/net3_termination.png)
+![Terminazione](assets/net3_termination.png)
 
 Mostra i due percorsi di terminazione.
 
