@@ -2,14 +2,11 @@ package pcd.poool.vnativethreads.controller;
 
 import pcd.poool.vnativethreads.model.Scene;
 
-import java.util.concurrent.CountDownLatch;
-
 public final class GameLifecycle {
     private final Scene scene;
     private final PlayerController player;
     private final PhysicsLoop physics;
     private final BotController bot;
-    private final CountDownLatch startCompleted = new CountDownLatch(1);
     private boolean started;
     private boolean stopping;
 
@@ -34,8 +31,6 @@ public final class GameLifecycle {
         } catch (RuntimeException | Error ex) {
             onTermination(ex);
             throw ex;
-        } finally {
-            startCompleted.countDown();
         }
     }
 
@@ -46,7 +41,6 @@ public final class GameLifecycle {
         player.interrupt();
         bot.interrupt();
         physics.interrupt();
-        if (!started) startCompleted.countDown();
     }
 
     public void awaitTermination() throws InterruptedException {
