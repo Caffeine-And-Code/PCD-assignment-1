@@ -13,6 +13,21 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v5
 
+      - name: Install Pandoc and LaTeX
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y pandoc texlive-xetex texlive-latex-recommended \
+            texlive-latex-extra texlive-fonts-recommended lmodern
+
+      - name: Build report PDF
+        working-directory: doc
+        run: |
+          pandoc report.md \
+            -o report.pdf \
+            --pdf-engine=xelatex \
+            --resource-path=. \
+            -V geometry:margin=2.5cm
+
       - name: Create ZIP
         run: zip -r "PCD-assigment-v${{ github.run_number }}.zip" src doc
 
@@ -24,4 +39,6 @@ jobs:
           draft: false
           prerelease: false
           generate_release_notes: true
-          files: PCD-assigment-v${{ github.run_number }}.zip
+          files: |
+            PCD-assigment-v${{ github.run_number }}.zip
+            doc/report.pdf
