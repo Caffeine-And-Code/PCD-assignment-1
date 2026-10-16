@@ -6,14 +6,13 @@ import pcd.poool.vjavaexecutorframework.util.BoundedBufferImpl;
 
 import java.util.function.Consumer;
 
-public class PlayerController extends Thread {
+public class PlayerController implements Runnable {
     private static final int BUFFER_SIZE = 200;
     private final BoundedBuffer<Command> buffer = new BoundedBufferImpl<>(BUFFER_SIZE);
     private final Scene scene;
     private final Consumer<Throwable> onTermination;
 
     public PlayerController(Scene scene, Consumer<Throwable> onTermination) {
-        super("poool-commands");
         this.scene = scene;
         this.onTermination = onTermination;
     }
@@ -22,13 +21,13 @@ public class PlayerController extends Thread {
     public void run() {
         Throwable failure = null;
         try {
-            while (!isInterrupted() && !scene.isStopped()) {
+            while (!Thread.currentThread().isInterrupted() && !scene.isStopped()) {
                 Command command = buffer.get();
-                if (isInterrupted()) break;
+                if (Thread.currentThread().isInterrupted()) break;
                 command.execute(scene);
             }
         } catch (InterruptedException ex) {
-            interrupt();
+            Thread.currentThread().interrupt();
         } catch (Throwable ex) {
             failure = ex;
             throw ex;
@@ -39,6 +38,6 @@ public class PlayerController extends Thread {
 
     // Full buffer: discard the new command rather than block Swing's EDT.
     public boolean notifyNewCommand(Command command) {
-        return !isInterrupted() && !scene.isStopped() && buffer.offer(command);
+        return !scene.isStopped() && buffer.offer(command);
     }
 }

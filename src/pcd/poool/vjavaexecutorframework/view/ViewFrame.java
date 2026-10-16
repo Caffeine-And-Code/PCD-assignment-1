@@ -152,7 +152,7 @@ public class ViewFrame extends JFrame {
 
             if (model.getStatus() != GameStatus.RUNNING) {
                 String message = switch (model.getStatus()) {
-                    case HUMAN_WON -> "Human wins";
+                    case HUMAN_WON -> "Player wins";
                     case BOT_WON -> "Bot wins";
                     case DRAW -> "Draw";
                     default -> "";

@@ -7,14 +7,13 @@ import java.util.Random;
 
 import java.util.function.Consumer;
 
-public class BotController extends Thread {
+public class BotController implements Runnable {
     private static final long THINK_TIME = 700;
     private final Scene scene;
     private final Consumer<Throwable> onTermination;
     private final Random random = new Random();
 
     public BotController(Scene scene, Consumer<Throwable> onTermination) {
-        super("poool-bot");
         this.scene = scene;
         this.onTermination = onTermination;
     }
@@ -23,7 +22,7 @@ public class BotController extends Thread {
     public void run() {
         Throwable failure = null;
         try {
-            while (!isInterrupted() && !scene.isStopped() && !scene.isGameOver()) {
+            while (!Thread.currentThread().isInterrupted() && !scene.isStopped() && !scene.isGameOver()) {
                 Thread.sleep(THINK_TIME);
                 if (scene.isStopped() || scene.isGameOver()) return;
                 var boardCopy = scene.getBoard();
@@ -43,7 +42,7 @@ public class BotController extends Thread {
                 }
             }
         } catch (InterruptedException ex) {
-            interrupt();
+            Thread.currentThread().interrupt();
         } catch (Exception ex) {
             failure = ex;
             throw ex;

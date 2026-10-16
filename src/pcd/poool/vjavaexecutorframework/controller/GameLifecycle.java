@@ -2,21 +2,25 @@ package pcd.poool.vjavaexecutorframework.controller;
 
 import pcd.poool.vjavaexecutorframework.model.Scene;
 
-import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.TimeUnit;
 
 public final class GameLifecycle {
     private final Scene scene;
     private final PlayerController player;
     private final PhysicsLoop physics;
     private final BotController bot;
-    private final CountDownLatch startCompleted = new CountDownLatch(1);
+    private final ExecutorService executor;
     private boolean started;
     private boolean stopping;
 
     public GameLifecycle(Scene scene, int workerCount) {
+        if (workerCount <= 0) throw new IllegalArgumentException("workerCount must be positive");
         this.scene = scene;
+        executor = Executors.newFixedThreadPool(Math.addExact(workerCount, 20));
         player = new PlayerController(scene, this::onTermination);
-        physics = new PhysicsLoop(scene, workerCount, this::onTermination);
+        physics = new PhysicsLoop(scene, workerCount, executor, this::onTermination);
         bot = new BotController(scene, this::onTermination);
     }
 
@@ -28,14 +32,12 @@ public final class GameLifecycle {
         if (started || stopping) return;
         started = true;
         try {
-            player.start();
-            bot.start();
-            physics.start();
+            executor.submit(player);
+            executor.submit(bot);
+            executor.submit(physics);
         } catch (RuntimeException | Error ex) {
             onTermination(ex);
             throw ex;
-        } finally {
-            startCompleted.countDown();
         }
     }
 
@@ -43,16 +45,11 @@ public final class GameLifecycle {
         if (stopping) return;
         stopping = true;
         scene.setInExceptionIfRunning();
-        player.interrupt();
-        bot.interrupt();
-        physics.interrupt();
-        if (!started) startCompleted.countDown();
+        executor.shutdownNow();
     }
 
     public void awaitTermination() throws InterruptedException {
-        physics.join();
-        bot.join();
-        player.join();
+        while (!executor.awaitTermination(Long.MAX_VALUE, TimeUnit.NANOSECONDS)) { }
     }
 
     private void onTermination(Throwable cause) {
