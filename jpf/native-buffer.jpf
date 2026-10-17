@@ -1,0 +1,5 @@
+target = pcd.test.jpf.NativeBufferJpfTest
+listener = gov.nasa.jpf.listener.PreciseRaceDetector
+race.include = pcd.poool.vnativethreads.util.*
+vm.shared.sync_detection = false
+vm.enable_assertions = pcd.test.jpf.*
