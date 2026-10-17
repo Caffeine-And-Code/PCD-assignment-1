@@ -66,16 +66,16 @@ calcolo:
 
 ### Versione con thread nativi (`vnativethreads`)
 
-#### Thread in gioco
+#### Thread
 
-| Thread           | Classe                         | Ruolo                                                                                                                                            |
-|------------------|--------------------------------|--------------------------------------------------------------------------------------------------------------------------------------------------|
-| EDT di Swing     | `ViewFrame`                    | cattura i tasti e li consegna al controller con `offer` (non bloccante: se il buffer è pieno il comando viene scartato, per non bloccare la GUI) |
-| `poool-commands` | `PlayerController`             | preleva i comandi dal buffer ed esegue l'impulso sul giocatore                                                                                   |
-| `poool-bot`      | `BotController`                | ogni 700 ms sceglie una pallina a caso e applica un impulso verso di essa                                                                        |
-| coordinatore     | `PhysicsLoop`                  | esegue il ciclo di simulazione e coordina i worker                                                                                               |
-| `main`           | `Main`                         | avvia il gioco e attende la terminazione di tutti i thread (`GameLifecycle.awaitTermination`)                                                    |
-| worker 1..n      | thread creati da `PhysicsLoop` | eseguono in parallelo integrazione e rilevamento collisioni                                                                                      |
+| Thread             | Classe                         | Ruolo                                                                                                                                            |
+|--------------------|--------------------------------|--------------------------------------------------------------------------------------------------------------------------------------------------|
+| EDT di Swing       | `ViewFrame`                    | cattura i tasti e li consegna al controller con `offer` (non bloccante: se il buffer è pieno il comando viene scartato, per non bloccare la GUI) |
+| `poool - commands` | `PlayerController`             | preleva i comandi dal buffer ed esegue l'impulso sul giocatore                                                                                   |
+| `poool - bot`      | `BotController`                | ogni 700 ms sceglie una pallina a caso e applica un impulso verso di essa                                                                        |
+| coordinatore       | `PhysicsLoop`                  | esegue il ciclo di simulazione e coordina i worker                                                                                               |
+| `main`             | `Main`                         | avvia il gioco e attende la terminazione di tutti i thread (`GameLifecycle.awaitTermination`)                                                    |
+| worker 1..n        | thread creati da `PhysicsLoop` | eseguono in parallelo integrazione e rilevamento collisioni                                                                                      |
 
 Il numero di worker è un parametro (argomento da riga di comando); di default vale `availableProcessors() - 1`
 (minimo 1), lasciando un core al coordinatore e alla GUI.
@@ -125,7 +125,7 @@ board (`Scene.getBoard()` restituisce una copia fatta sotto lock) e applica l'im
 impulso ha quindi effetto tra un
 passo e il successivo.
 
-## Comportamento (reti di Petri)
+## Comportamento
 
 Le reti sono a un livello di astrazione intermedio: i posti con un solo gettone rappresentano il punto di controllo di
 un thread, i posti dei semafori e dei lock rappresentano le risorse. Il numero di worker è fissato a 2 per leggibilità;
