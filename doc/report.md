@@ -1,4 +1,4 @@
-# Report
+# Documentazione
 
 ## Analisi
 
@@ -39,13 +39,12 @@ Nella **versione
 0 ([vsynchronized](https://github.com/Caffeine-And-Code/PCD-assignment-1/tree/d7be7ddd448c2c60d066f1e16673c332c3f10349/src/pcd/poool/vsynchronized))**,
 l'architettura è suddivisa nei seguenti componenti:
 
-- **Model (`model`)**: contiene le entità del gioco e la logica fisica. La classe `Scene` rappresenta lo stato condiviso
-  (board, punteggi, stato della partita) e agisce da monitor tramite un `ReentrantLock`, garantendo l'accesso
-  mutuamente esclusivo durante gli aggiornamenti della simulazione e l'applicazione degli impulsi. Il `Board` contiene
-  le palline ed espone copie difensive dello stato.
+- **Model (`model`)**: contiene le entità del gioco e la logica fisica. La classe `Board` rappresenta lo stato condiviso
+  e agisce da monitor tramite un `ReentrantLock`, garantendo l'accesso mutuamente esclusivo durante gli aggiornamenti
+  della simulazione, l'applicazione degli impulsi e la creazione degli snapshot.
 - **View (`view`)**: gestisce la rappresentazione grafica tramite Swing. La classe `View` implementa `BoardObserver` e
   riceve le notifiche di aggiornamento dal Model. Il `ViewModel` mantiene una copia dei dati necessari al rendering,
-  ottenuta leggendo lo stato della `Scene`.
+  ottenuta attraverso gli snapshot del `Board`.
 - **Controller (`controller`)**: gestisce gli input e l'esecuzione della simulazione. `PooolController` riceve i comandi
   della tastiera attraverso un buffer limitato thread-safe (`BoundedBufferImpl`, monitor con `synchronized`/`wait`/
   `notifyAll`), mentre `PhysicsLoop` esegue gli aggiornamenti fisici su un thread dedicato.
@@ -69,13 +68,14 @@ calcolo:
 
 #### Thread in gioco
 
-| Thread             | Classe                         | Ruolo                                                                                                                                            |
-|--------------------|--------------------------------|--------------------------------------------------------------------------------------------------------------------------------------------------|
-| EDT di Swing       | `ViewFrame`                    | cattura i tasti e li consegna al controller con `offer` (non bloccante: se il buffer è pieno il comando viene scartato, per non bloccare la GUI) |
-| `poool - commands` | `PooolController`              | preleva i comandi dal buffer ed esegue l'impulso sul giocatore                                                                                   |
-| `poool - bot`      | `BotPlayer`                    | ogni 700 ms sceglie una pallina a caso e applica un impulso verso di essa                                                                        |
-| coordinatore       | `PhysicsLoop`                  | esegue il ciclo di simulazione e coordina i worker                                                                                               |
-| worker 1..n        | thread creati da `PhysicsLoop` | eseguono in parallelo integrazione e rilevamento collisioni                                                                                      |
+| Thread           | Classe                         | Ruolo                                                                                                                                            |
+|------------------|--------------------------------|--------------------------------------------------------------------------------------------------------------------------------------------------|
+| EDT di Swing     | `ViewFrame`                    | cattura i tasti e li consegna al controller con `offer` (non bloccante: se il buffer è pieno il comando viene scartato, per non bloccare la GUI) |
+| `poool-commands` | `PlayerController`             | preleva i comandi dal buffer ed esegue l'impulso sul giocatore                                                                                   |
+| `poool-bot`      | `BotController`                | ogni 700 ms sceglie una pallina a caso e applica un impulso verso di essa                                                                        |
+| coordinatore     | `PhysicsLoop`                  | esegue il ciclo di simulazione e coordina i worker                                                                                               |
+| `main`           | `Main`                         | avvia il gioco e attende la terminazione di tutti i thread (`GameLifecycle.awaitTermination`)                                                    |
+| worker 1..n      | thread creati da `PhysicsLoop` | eseguono in parallelo integrazione e rilevamento collisioni                                                                                      |
 
 Il numero di worker è un parametro (argomento da riga di comando); di default vale `availableProcessors() - 1`
 (minimo 1), lasciando un core al coordinatore e alla GUI.
@@ -89,7 +89,11 @@ Il numero di worker è un parametro (argomento da riga di comando); di default v
 - `CyclicBarrier movementDone`: tutti i worker devono aver finito l'integrazione prima che qualcuno inizi a cercare
   collisioni.
 - `Semaphore finished`: il coordinatore attende *n* permessi, uno per worker, prima di applicare le collisioni.
-- `BoundedBufferImpl`: buffer limitato (200 comandi) tra EDT e controller, scritto come monitor.
+- `BoundedBufferImpl`: buffer limitato (200 comandi) tra EDT e `PlayerController`, scritto come monitor.
+- `GameLifecycle`: avvia i tre thread attivi e centralizza lo stop. `stop()` è idempotente (`synchronized` con flag),
+  porta lo stato della `Scene` a `IN_EXCEPTION` se la partita è ancora in corso e interrompe giocatore, bot e fisica.
+  Ogni thread, uscendo, chiama `onTermination`, che richiama `stop()`: la fine di un thread comporta quindi lo stop
+  degli altri.
 
 #### Partizione del lavoro
 
@@ -102,20 +106,23 @@ piccole nella lista di lavoro, quindi sono trattate come le altre.
 Il coordinatore prende il lock della `Scene` per tutta la durata del passo e lavora su una **copia** del board.
 
 1. **Fork**: il coordinatore prepara i dati condivisi del passo (lista palline, `dt`, liste delle collisioni, array
-   degli errori) e rilascia i semafori `start[i]`.
+   degli errori `failures`) e rilascia i semafori `start[i]`.
 2. **Integrazione** (parallela): ogni worker aggiorna posizione, velocità, attrito e rimbalzi sui bordi delle *sole*
    proprie palline. **Barriera.**
 3. **Rilevamento collisioni** (parallelo, sola lettura): ogni worker controlla le coppie `(i, j)` con `i` propria e
    `j > i`, e registra `j` nella lista `collisions[i]`. Ogni lista ha un solo scrittore. Poi il worker rilascia
    `finished`.
-4. **Join**: il coordinatore acquisisce *n* permessi da `finished`.
+4. **Join**: il coordinatore acquisisce *n* permessi da `finished` e controlla `failures`: se un worker ha lanciato
+   un'eccezione, il passo viene abbandonato e la partita termina con stato `IN_EXCEPTION`.
 5. **Applicazione collisioni** (seriale, coordinatore): risolve gli urti registrati e aggiorna l'ultimo giocatore che ha
    colpito ciascuna pallina.
 6. **Commit** (`Scene`): rimozione delle palline in buca, aggiornamento dei punteggi (solo se l'ultima pallina a
    colpirla era un giocatore), aggiornamento dello stato di gioco, notifica alla View e rilascio del lock.
 
-Gli impulsi dei giocatori non si inseriscono mai a metà passo: sia il controller sia (dopo la correzione) il bot li
-applicano con `Scene.updateBoard`, che richiede lo stesso lock del passo di fisica. Un impulso ha quindi effetto tra un
+Gli impulsi dei giocatori non si inseriscono mai a metà passo: sia `PlayerController` sia `BotController` li applicano
+con `Scene.updateBoard`, che richiede lo stesso lock del passo di fisica. Il bot sceglie il bersaglio su una copia del
+board (`Scene.getBoard()` restituisce una copia fatta sotto lock) e applica l'impulso con un nuovo accesso al lock. Un
+impulso ha quindi effetto tra un
 passo e il successivo.
 
 ## Comportamento (reti di Petri)
@@ -140,7 +147,10 @@ Mostra il fork-join tra coordinatore e worker.
   non più modificate.
 - `t_join` richiede *n* gettoni in `finished` e il gettone di `c_waiting`: la fase di applicazione parte solo dopo che
   tutti i worker hanno finito. Al termine di `t_finish` ogni worker torna in `w*_idle`, pronto per il passo successivo.
-- Proprietà visibili sulla rete: il ciclo è vivo (nessuna transizione resta bloccata se i worker non falliscono), i
+- Anche se un worker lancia un'eccezione, la registra in `failures[id]` e raggiunge comunque la barriera e `finished`
+  (il rilascio è in un `finally`): la rete non si blocca e il coordinatore decide dopo il join cosa fare. Questo
+  comportamento non è disegnato per semplicità.
+- Proprietà visibili sulla rete: il ciclo è vivo (nessuna transizione resta bloccata), i
   posti `w*_idle` e `c_ready` sono 1-limitati (nessun passo si sovrappone al successivo) e `scene_lock` è 1-limitato
   (mutua esclusione).
 
@@ -154,7 +164,8 @@ Mostra come umano, bot e fisica competono per `scene_lock`.
   libero, `t_get` lo restituisce. Il caso "buffer pieno → comando scartato" non è disegnato (richiederebbe un arco
   inibitore); il caso "buffer vuoto → il controller attende" emerge dal fatto che `t_get` non è abilitata senza
   gettoni in `buffer`.
-- `t_exec`, `t_kick` e `t_phys_start` condividono `scene_lock`, quindi sono in mutua esclusione: gli impulsi non possono
+- `t_exec`, `t_kick` e `t_phys_start` (cioè `PlayerController`, `BotController` e `PhysicsLoop`) condividono
+  `scene_lock`, quindi sono in mutua esclusione: gli impulsi non possono
   mai interferire con un passo di fisica.
 - L'EDT non entra mai in competizione per il lock: lo scarico in coda è non bloccante, per questo la GUI resta
   reattiva anche con migliaia di palline.
@@ -163,15 +174,20 @@ Mostra come umano, bot e fisica competono per `scene_lock`.
 
 ![Terminazione](assets/net3_termination.png)
 
-Mostra i due percorsi di terminazione.
+Mostra la terminazione coordinata da `GameLifecycle`, con un unico meccanismo per i due casi.
 
-- **Fine partita**: `t_game_over` imposta il flag `game_over`. Il coordinatore esce dal ciclo (`t_exit_gameover`) e il
-  bot, al risveglio, esce a sua volta (`t_bot_exit_gameover`).
-- **Chiusura della finestra**: il controller viene interrotto; nel suo `finally` interrompe fisica e bot
-  (`t_ctrl_exit`), che escono tramite `t_exit_interrupted` / `t_bot_exit_interrupted`.
-- In entrambi i casi il coordinatore, prima di terminare, interrompe i worker (bloccati su `start[i]`) e li attende con
-  `join` (`t_interrupt_workers`, `t_join_workers`). Si arriva così a `physics_ended` con tutti i thread conclusi, cioè
-  senza thread orfani.
+- **Cause di stop**: la fine partita (`t_game_over`, che porta `Scene` in uno stato diverso da `RUNNING`) oppure la
+  chiusura della finestra (`t_close_window`, che chiama `lifecycle.stop`). Anche l'uscita di un qualunque thread
+  produce una richiesta di stop (`stop_requested`).
+- `t_stop` è eseguibile una sola volta (consuma `stop_idle`): imposta lo stato di stop e interrompe i tre thread. Le
+  richieste successive passano per `t_stop_again`, che non ha effetto: è il significato di "idempotente".
+- Ogni thread esce o perché vede la partita ferma (`*_exit_stopped`, arco di sola lettura su `scene_stopped`) o perché
+  è stato interrotto (`*_exit_interrupted`). In particolare `PlayerController`, bloccato in `buffer.get()`, viene
+  svegliato dall'interruzione: non rimane nessun thread orfano anche quando la partita finisce senza chiudere la
+  finestra.
+- Il coordinatore, uscendo, interrompe i worker (bloccati su `start[i]` o sulla barriera) e li attende con `join`
+  (`t_stop_workers`). `main`, con `awaitTermination`, termina solo dopo `physics_ended`, `player_ended` e `bot_ended`
+  (`t_await_termination`).
 
 ## Argomentazioni
 
@@ -195,8 +211,8 @@ Mostra i due percorsi di terminazione.
   - Il rilevamento resta O (N²): una griglia spaziale ridurrebbe i controlli alle sole palline vicine.
   - La fase di applicazione delle collisioni e il commit sono seriali (legge di Amdahl).
   - Il lock della `Scene` è tenuto per tutto il passo, quindi un impulso attende al più la durata di un passo.
-  - Se un worker lancia un'eccezione durante l'integrazione, non raggiunge la barriera e gli altri restano in attesa:
-    l'errore è registrato ma il passo non si completa.
+  - Un'eccezione in un worker termina l'intera partita (stato `IN_EXCEPTION`) invece di essere gestita
+    localmente: è una scelta di semplicità, non di tolleranza ai guasti.
 
 ## Performance Tests With Results
 
