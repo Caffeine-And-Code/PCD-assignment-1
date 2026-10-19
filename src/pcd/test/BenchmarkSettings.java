@@ -1,6 +1,5 @@
 package pcd.test;
 
-/** Command-line settings of the performance test. */
 record BenchmarkSettings(long warmupMillis, long measurementMillis, int repetitions, int maxWorkers) {
     private static final long DEFAULT_WARMUP_MILLIS = 1_000;
     private static final long DEFAULT_MEASUREMENT_MILLIS = 3_000;
