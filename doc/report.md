@@ -1,5 +1,10 @@
 # Documentazione
 
+## Autori
+- Mattia Senni (mattia.senni@studio.unibo.it)
+- Fabio Fattori (fabio.fattori3@studio.unibo.it)
+- Francesco Tonelli (francesco.tonelli9@studio.unibo.it)
+
 ## Analisi
 
 ### Il problema
@@ -214,31 +219,85 @@ Mostra la terminazione coordinata da `GameLifecycle`, con un unico meccanismo pe
   - Un'eccezione in un worker termina l'intera partita (stato `IN_EXCEPTION`) invece di essere gestita
     localmente: è una scelta di semplicità, non di tolleranza ai guasti.
 
-## Performance Tests With Results
+## Performance Tests
 
-*Da completare con i dati misurati.* Struttura suggerita:
+Il test usa direttamente il codice di produzione dei tre applicativi, senza GUI e rendering. Ogni campione parte da
+una nuova `MassiveBoardConf` con 4500 palline, esegue 1 secondo di warm-up e misura i 3 secondi successivi. Durante la
+misura, viene accodato un comando ogni 250 ms, il quale attraversa il `BoundedBuffer`, viene eseguito dal controller e
+acquisisce lo stesso monitor usato dalla fisica. L'impulso applicato è nullo, quindi la prova misura la reattività senza
+alterare la simulazione. I risultati sono la media di 3 campioni. Le versioni concorrenti vengono provate con un numero
+di worker che parte da 1 e raddoppia a ogni prova, includendo infine una configurazione con tanti worker quanti sono i
+processori logici disponibili.
 
-- **Metodo**: tempo medio per passo di simulazione (escluso il rendering), su almeno 100 passi dopo un warm-up, mediato
-  su
-  più esecuzioni. Parametri: N ∈ {1000, 5000, 10000, 20000} palline, numero di worker ∈ {1, 2, 4, …, core disponibili}.
-  Indicare CPU, numero di core e versione di Java.
-- **Speedup** `S(n) = T_seq / T_par(n)` rispetto alla versione `vsynchronized`.
-- **Efficienza** `E(n) = S(n) / n`, per valutare quanto bene si sfruttano i core.
-- **Discussione**: confronto con il limite di Amdahl dovuto alle fasi seriali (applicazione collisioni, commit), effetto
-  dello sbilanciamento e dell'overhead di sincronizzazione per N piccolo.
+Le cinque misure di riferimento per le performance sono le seguenti:
+- Throughput: aggiornamenti fisici completati al secondo (Gli aggiornamenti generati dai comandi non sono contati
+  come frame).
+- Responsiveness: latenza media, in millisecondi, tra l'inserimento del comando nel buffer e il completamento
+  dell'aggiornamento del modello.
+- Speedup: `S_seq(n) = T_seq / T_n`, equivalente a `throughput_n / throughput_seq` a parità di carico. Il riferimento
+  richiesto dal README è l'applicativo `vsynchronized`.
+- Limite di Amdahl: per ogni applicativo concorrente si calcola prima lo speedup interno
+  `S_core(8) = throughput_8 / throughput_1`, e da questo si stima la frazione parallelizzabile
+  `P = (1 - 1 / S_core(8)) / (1 - 1 / 8)` e quindi il limite asintotico `S_inf = 1 / (1 - P)`.
+- Efficienza: `E(n) = S_core(n) / n`, dove `S_core(n) = throughput_n / throughput_1`. Il confronto parte da un
+  worker della stessa implementazione, così misura l'uso dei core senza confonderlo con differenze algoritmiche.
 
-| N     | Sequenziale (ms/passo) | 1 worker | 2 worker | 4 worker | … | Speedup max |
-|-------|------------------------|----------|----------|----------|---|-------------|
-| 1000  |                        |          |          |          |   |             |
-| 10000 |                        |          |          |          |   |             |
+| Implementazione    | Worker | Throughput (upd/s) | Responsiveness (ms) | Speedup | Amdahl `S_inf` | Efficienza |
+|--------------------|-------:|-------------------:|--------------------:|--------:|---------------:|-----------:|
+| Sequenziale        |      1 |               5,66 |               91,64 |    1,00 |           1,00 |     100,0% |
+| Thread nativi      |      1 |              21,55 |               72,75 |    3,81 |           2,87 |     100,0% |
+| Thread nativi      |      2 |              29,77 |               48,85 |    5,26 |           2,87 |      69,1% |
+| Thread nativi      |      4 |              39,32 |               36,05 |    6,95 |           2,87 |      45,6% |
+| Thread nativi      |      8 |              50,18 |               26,19 |    8,87 |           2,87 |      29,1% |
+| Executor Framework |      1 |              30,83 |               47,70 |    5,45 |           2,44 |     100,0% |
+| Executor Framework |      2 |              41,89 |               56,41 |    7,40 |           2,44 |      67,9% |
+| Executor Framework |      4 |              48,81 |               33,95 |    8,62 |           2,44 |      39,6% |
+| Executor Framework |      8 |              63,80 |               22,30 |   11,27 |           2,44 |      25,9% |
+
+Le due versioni concorrenti migliorano sia il throughput sia la responsiveness. Con 8 worker, i thread nativi
+raggiungono 50,18 aggiornamenti al secondo, 8,87 volte il riferimento sequenziale, e riducono la latenza media da
+91,64 ms a 26,19 ms. L'Executor Framework raggiunge il risultato assoluto migliore: 63,80 aggiornamenti al secondo,
+con speedup 11,27 e latenza di 22,30 ms. La responsiveness dell'Executor Framework con 2 worker, pari a 56,41 ms,
+è l'unico valore non monotono e può dipendere dalla variabilità di scheduling della singola esecuzione.
+
+Per isolare il contributo dei core occorre osservare l'efficienza: già con
+un solo worker le implementazioni concorrenti sono strutturalmente diverse dal riferimento. Da 1 a 8 worker il
+throughput dei thread nativi cresce di 2,33 volte, con efficienza del 29,1%; quello dell'Executor Framework cresce di
+2,07 volte, con efficienza del 25,9%. Il rendimento decresce all'aumentare dei worker per effetto delle fasi seriali
+(applicazione delle collisioni e commit), della sincronizzazione e della schedulazione. La stima di Amdahl fornisce un
+limite asintotico di 2,87 per i thread nativi e 2,44 per l'Executor Framework rispetto alle rispettive esecuzioni con un
+worker.
 
 ## Model-Checking
 
-*Da completare.* Proposta di perimetro per JPF, con istanze piccole (2 worker, 3–4 palline, 1–2 passi):
+Il model checking è stato eseguito con JPF Core 8 sui due `BoundedBufferImpl` usati dalle versioni concorrenti. Ogni 
+modello usa direttamente il buffer di produzione con capacità 1, un produttore e un consumatore. Il produttore
+inserisce 1 e 2, mentre il consumatore deve estrarli nello stesso ordine. Il `main` attende entrambi con `join` e 
+controlla che i thread siano terminati e che il buffer sia vuoto. Questa istanza piccola mantiene finito lo spazio 
+degli stati ma obbliga comunque JPF a esplorare le possibili interleaving prodotte dal buffer pieno e dal buffer vuoto.
 
-- il protocollo coordinatore–worker (`start`, `CyclicBarrier`, `finished`);
-- il `BoundedBufferImpl` (produttore/consumatore);
-- la sequenza di terminazione (interruzione e `join` dei worker).
+Sono verificate le seguenti proprietà:
 
-Proprietà da verificare: assenza di deadlock, assenza di data race sulle liste delle collisioni e sulle palline
-(`PreciseRaceDetector`), terminazione di tutti i thread.
+- assenza di deadlock e di eccezioni non gestite;
+- terminazione di produttore e consumatore;
+- ordine FIFO e assenza di elementi persi o duplicati;
+- buffer vuoto al termine;
+- assenza di data race, tramite `PreciseRaceDetector`.
+
+I target sono `NativeBufferJpfTest` ed `ExecutorBufferJpfTest`, mentre le configurazioni sono
+`jpf/native-buffer.jpf` e `jpf/executor-buffer.jpf`. Entrambe abilitano le asserzioni e il race detector. Lo script
+`jpf/run.ps1` compila solo le classi necessarie in `out/jpf` ed esegue in sequenza le due configurazioni con JDK 11:
+
+```powershell
+./jpf/run.ps1 -JpfHome C:/path/to/jpf-core -JavaHome C:/path/to/jdk-11
+```
+
+| Modello            | Esito                | Stati nuovi | Stati visitati | Backtrack | Stati finali | Profondità massima |
+|--------------------|----------------------|------------:|---------------:|----------:|-------------:|-------------------:|
+| Thread nativi      | `no errors detected` |         387 |            361 |       748 |            3 |                 57 |
+| Executor Framework | `no errors detected` |         387 |            361 |       748 |            3 |                 57 |
+
+In entrambi i casi JPF ha prodotto 387 choice generator relativi ai thread e ha concluso con
+`no errors detected`. Nel modello finito esplorato non sono quindi emersi deadlock, race, violazioni delle asserzioni o
+mancata terminazione. Il risultato non si estende automaticamente alla simulazione fisica, al protocollo tra worker o
+a un numero arbitrario di produttori, consumatori ed elementi: tali componenti restano fuori dal perimetro verificato.
