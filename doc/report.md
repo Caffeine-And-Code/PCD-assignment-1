@@ -7,28 +7,22 @@
 
 ## Analisi
 
-### Il problema
-
-Il sistema simula un biliardo 2D con migliaia di palline piccole e due palline grandi (umano e bot), con attrito,
-rimbalzi e urti elastici. Il punteggio cresce quando un giocatore manda una pallina piccola in buca; la partita termina
-quando non restano palline o quando la pallina di un giocatore finisce in buca.
-
 ### Attività concorrenti
 
-- **Fisica**: aggiornamento di posizione e velocità di migliaia di palline a ogni passo. L'integrazione del moto è
-  data-parallel, mentre il rilevamento delle collisioni (O (N²) in versione naïve) è il collo di bottiglia.
-- **Giocatore umano**: input asincrono da tastiera (thread della GUI) che, tramite il controller, modifica la velocità
+- Fisica: aggiornamento di posizione e velocità di migliaia di palline a ogni passo. L'integrazione del moto è
+  data-parallel, mentre il rilevamento delle collisioni (O ($N^2$) in versione naive) è il collo di bottiglia.
+- Giocatore umano: input asincrono da tastiera (thread della GUI) che, tramite il controller, modifica la velocità
   della sua pallina.
-- **Bot**: attività autonoma che applica impulsi alla propria pallina a intervalli propri.
-- **GUI**: rendering periodico, separato dal calcolo per restare reattivi.
+- Bot: processo autonomo che applica impulsi alla propria pallina a intervalli propri.
+- GUI: rendering periodico, separato dal calcolo per restare reattivi.
 
 ### Aspetti critici
 
-- **Stato condiviso**: velocità delle palline dei giocatori, punteggi, stato di gioco e lista delle palline in gioco
+- Stato condiviso: velocità delle palline dei giocatori, punteggi, stato di gioco e lista delle palline in gioco
   sono letti e scritti da più thread, quindi servono accessi protetti.
-- **Collisioni**: un urto coinvolge due palline, quindi worker diversi potrebbero scrivere sulla stessa pallina (lost
-  update).
-- **Sincronizzazione dei passi**: le fasi di ogni passo hanno un ordine preciso e i worker devono attendersi a fine
+- Collisioni: un urto coinvolge due palline, quindi worker diversi potrebbero scrivere sulla stessa pallina (con rischio
+- di update persi).
+- Sincronizzazione dei passi: le fasi di ogni passo hanno un ordine preciso e i worker devono attendersi a fine
   fase.
 - **Vista**: la GUI deve ricevere uno snapshot coerente dello stato, senza leggere dati a metà aggiornamento.
 - **Terminazione**: la fine partita (o la chiusura della finestra) richiede uno stop coordinato di più thread, senza
