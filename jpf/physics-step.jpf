@@ -1,5 +1,5 @@
-target = pcd.test.jpf.ExecutorBufferJpfTest
+target = pcd.test.jpf.PhysicsStepJpfTest
 listener = gov.nasa.jpf.listener.PreciseRaceDetector
-race.include = pcd.poool.vjavaexecutorframework.util.*
+race.include = pcd.test.jpf.*
 vm.shared.sync_detection = false
 vm.enable_assertions = pcd.test.jpf.*

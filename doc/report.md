@@ -7,234 +7,119 @@
 
 ## Analisi
 
-### Attività concorrenti
+Le principali attività concorrenti da valutare sono state:
+- l'aggiornamento di posizione e velocità di un numero elevato di palline a ogni passo. Il rilevamento delle collisioni (O ($N^2$) in versione naive) è il principale collo di bottiglia;
+- l'input asincrono del giocatore umano da tastiera che modifica la velocità della sua pallina;
+- il processo processo autonomo che applica impulsi alla pallina del bot a intervalli selezionati;
+- il rendering della grafica, separato dal calcolo per permette all'applicazione di rimanere reattiva.
 
-- Fisica: aggiornamento di posizione e velocità di migliaia di palline a ogni passo. L'integrazione del moto è
-  data-parallel, mentre il rilevamento delle collisioni (O ($N^2$) in versione naive) è il collo di bottiglia.
-- Giocatore umano: input asincrono da tastiera (thread della GUI) che, tramite il controller, modifica la velocità
-  della sua pallina.
-- Bot: processo autonomo che applica impulsi alla propria pallina a intervalli propri.
-- GUI: rendering periodico, separato dal calcolo per restare reattivi.
-
-### Aspetti critici
-
-- Stato condiviso: velocità delle palline dei giocatori, punteggi, stato di gioco e lista delle palline in gioco
-  sono letti e scritti da più thread, quindi servono accessi protetti.
-- Collisioni: un urto coinvolge due palline, quindi worker diversi potrebbero scrivere sulla stessa pallina (con rischio
-- di update persi).
-- Sincronizzazione dei passi: le fasi di ogni passo hanno un ordine preciso e i worker devono attendersi a fine
-  fase.
-- **Vista**: la GUI deve ricevere uno snapshot coerente dello stato, senza leggere dati a metà aggiornamento.
-- **Terminazione**: la fine partita (o la chiusura della finestra) richiede uno stop coordinato di più thread, senza
-  deadlock né thread orfani.
+Di conseguenza, i principali aspetti critici riscontrati sono stati:
+- la gestione dello stato condiviso, ovvero di molte variabili che sono lette e scritte da più thread, quindi sono necessari accessi protetti;
+- gli urti, i quali coinvolgono due palline, quindi worker diversi potrebbero scrivere sulla stessa pallina (con rischio di update persi);
+- la sincronia: le fasi di ogni passo hanno un ordine preciso e i worker devono attendersi a fine fase;
+- la GUI, la quale deve ricevere uno snapshot coerente dello stato, senza leggere dati a metà aggiornamento;
+- la gestione del game over, la quale richiede uno stop coordinato di più thread, senza deadlock né thread orfani.
 
 ## Architettura
 
-Il progetto è organizzato secondo il pattern **Model-View-Controller (MVC)**, mantenendo separati la logica di gioco, la
-gestione degli input e la rappresentazione grafica. Questa struttura viene mantenuta in tutte e tre le versioni, che si
-differenziano per le modalità di gestione della concorrenza.
+Il progetto è organizzato secondo il pattern Model-View-Controller (MVC), mantenendo separati la logica di gioco, la gestione degli input e la rappresentazione grafica. Questa struttura viene mantenuta in tutte e tre le versioni.
 
-Nella **versione
-0 ([vsynchronized](https://github.com/Caffeine-And-Code/PCD-assignment-1/tree/d7be7ddd448c2c60d066f1e16673c332c3f10349/src/pcd/poool/vsynchronized))**,
-l'architettura è suddivisa nei seguenti componenti:
+### Versione sincrona
 
-- **Model (`model`)**: contiene le entità del gioco e la logica fisica. La classe `Board` rappresenta lo stato condiviso
+Nella versione sincrona ([vsynchronized](https://github.com/Caffeine-And-Code/PCD-assignment-1/tree/d7be7ddd448c2c60d066f1e16673c332c3f10349/src/pcd/poool/vsynchronized)), non richiesta ma sviluppata allo scopo di avere un riferimento per i test di performance, l'architettura è suddivisa nei seguenti componenti:
+
+- Model: contiene le entità del gioco e la logica fisica. La classe `Board` rappresenta lo stato condiviso
   e agisce da monitor tramite un `ReentrantLock`, garantendo l'accesso mutuamente esclusivo durante gli aggiornamenti
-  della simulazione, l'applicazione degli impulsi e la creazione degli snapshot.
-- **View (`view`)**: gestisce la rappresentazione grafica tramite Swing. La classe `View` implementa `BoardObserver` e
+  della simulazione;
+- View: gestisce la rappresentazione grafica tramite Swing. La classe `View` implementa `BoardObserver` e
   riceve le notifiche di aggiornamento dal Model. Il `ViewModel` mantiene una copia dei dati necessari al rendering,
-  ottenuta attraverso gli snapshot del `Board`.
-- **Controller (`controller`)**: gestisce gli input e l'esecuzione della simulazione. `PooolController` riceve i comandi
-  della tastiera attraverso un buffer limitato thread-safe (`BoundedBufferImpl`, monitor con `synchronized`/`wait`/
+  ottenuta attraverso gli snapshot del `Board`;
+- Controller: gestisce gli input e l'esecuzione della simulazione. `PooolController` riceve i comandi
+  della tastiera attraverso un buffer thread-safe (`BoundedBufferImpl`, monitor con `synchronized`/`wait`/
   `notifyAll`), mentre `PhysicsLoop` esegue gli aggiornamenti fisici su un thread dedicato.
 
-La versione sincrona costituisce la base di riferimento: il calcolo fisico viene eseguito sequenzialmente da un unico
-thread, mentre la gestione dei comandi e la GUI operano su thread separati.
+In questa versione, il calcolo fisico viene eseguito sequenzialmente da un unico thread, mentre la gestione dei comandi e la GUI operano su thread separati.
 
-Le altre due versioni mantengono la stessa organizzazione MVC, introducendo differenti strategie per parallelizzare il
-calcolo:
+Le altre due versioni mantengono la stessa organizzazione MVC, introducendo differenti strategie per parallelizzare il calcolo: la versione con thread nativi ([vnativethreads](https://github.com/Caffeine-And-Code/PCD-assignment-1/tree/d7be7ddd448c2c60d066f1e16673c332c3f10349/src/pcd/poool/vnativethreads)) utilizza un numero fisso di thread per distribuire il lavoro, mentre la versione con Executor framework ([vjavaexecutorframework](https://github.com/Caffeine-And-Code/PCD-assignment-1/tree/d7be7ddd448c2c60d066f1e16673c332c3f10349/src/pcd/poool/vjavaexecutorframework)) utilizza quest'ultimo per eseguire le fasi di calcolo come task su un pool di thread.
 
-- **Versione
-  1 ([vnativethreads](https://github.com/Caffeine-And-Code/PCD-assignment-1/tree/d7be7ddd448c2c60d066f1e16673c332c3f10349/src/pcd/poool/vnativethreads))**:
-  utilizza un numero fisso di thread di piattaforma per distribuire il lavoro, coordinati mediante una barriera tra le
-  fasi della simulazione.
-- **Versione
-  2 ([vjavaexecutorframework](https://github.com/Caffeine-And-Code/PCD-assignment-1/tree/d7be7ddd448c2c60d066f1e16673c332c3f10349/src/pcd/poool/vjavaexecutorframework))**:
-  utilizza l'Executor Framework per eseguire le fasi di calcolo come task su un pool di thread, attendendone il
-  completamento tramite `Future`.
+### Versione con thread nativi
 
-### Versione con thread nativi (`vnativethreads`)
+I principali componenti della versione con thread nativi sono:
+- `PhysicsLoop`, che coordina un numero configurabile di worker, di base `availableProcessors() - 1` con un minimo di 1; 
+- EDT di Swing, `PlayerController` e `BotController`, i quali gestiscono rispettivamente tastiera, comandi e bot;
+- `GameLifecycle` centralizza avvio, interruzione e attesa dei thread. I comandi passano attraverso un `BoundedBufferImpl` da 200 elementi senza bloccare la GUI.
+- `Scene` protegge board, punteggi e stato con un `ReentrantLock`: fisica e impulsi sono quindi serializzati e la View osserva solo stati completi. 
 
-#### Thread
+Durante un passo il coordinatore lavora su una copia del board e assegna le palline ai worker in round-robin. Il passo segue queste fasi:
+1. il coordinatore rilascia i semafori;
+2. i worker aggiornano in parallelo le proprie palline e si sincronizzano;
+3. i worker rilevano in parallelo le collisioni, scrivendo ciascuno nelle proprie liste;
+4. il coordinatore attende i permessi, controlla gli errori e applica le collisioni;
+5. `Scene` esegue il commit, aggiorna punteggi e stato e notifica la View.
 
-| Thread             | Classe                         | Ruolo                                                                                                                                            |
-|--------------------|--------------------------------|--------------------------------------------------------------------------------------------------------------------------------------------------|
-| EDT di Swing       | `ViewFrame`                    | cattura i tasti e li consegna al controller con `offer` (non bloccante: se il buffer è pieno il comando viene scartato, per non bloccare la GUI) |
-| `poool - commands` | `PlayerController`             | preleva i comandi dal buffer ed esegue l'impulso sul giocatore                                                                                   |
-| `poool - bot`      | `BotController`                | ogni 700 ms sceglie una pallina a caso e applica un impulso verso di essa                                                                        |
-| coordinatore       | `PhysicsLoop`                  | esegue il ciclo di simulazione e coordina i worker                                                                                               |
-| `main`             | `Main`                         | avvia il gioco e attende la terminazione di tutti i thread (`GameLifecycle.awaitTermination`)                                                    |
-| worker 1..n        | thread creati da `PhysicsLoop` | eseguono in parallelo integrazione e rilevamento collisioni                                                                                      |
+Gli impulsi possono essere applicati solo tra due passi. Un errore in un worker porta la partita in `IN_EXCEPTION` e la terminazione interrompe e attende tutti i thread.
 
-Il numero di worker è un parametro (argomento da riga di comando); di default vale `availableProcessors() - 1`
-(minimo 1), lasciando un core al coordinatore e alla GUI.
+### Versione con Executor Framework
 
-#### Strumenti di sincronizzazione
-
-- `Scene`: monitor realizzato con `ReentrantLock` (fair). Protegge board, punteggi, stato e fps, e serializza tra loro
-  passi di fisica e impulsi dei giocatori. Gli osservatori vengono notificati mentre il lock è tenuto, quindi la View
-  riceve sempre uno stato coerente.
-- `Semaphore start[i]`: il coordinatore "sveglia" il worker *i* all'inizio di ogni passo.
-- `CyclicBarrier movementDone`: tutti i worker devono aver finito l'integrazione prima che qualcuno inizi a cercare
-  collisioni.
-- `Semaphore finished`: il coordinatore attende *n* permessi, uno per worker, prima di applicare le collisioni.
-- `BoundedBufferImpl`: buffer limitato (200 comandi) tra EDT e `PlayerController`, scritto come monitor.
-- `GameLifecycle`: avvia i tre thread attivi e centralizza lo stop. `stop()` è idempotente (`synchronized` con flag),
-  porta lo stato della `Scene` a `IN_EXCEPTION` se la partita è ancora in corso e interrompe giocatore, bot e fisica.
-  Ogni thread, uscendo, chiama `onTermination`, che richiama `stop()`: la fine di un thread comporta quindi lo stop
-  degli altri.
-
-#### Partizione del lavoro
-
-Con *n* worker, il worker *w* gestisce le palline con `id % n == w` (round-robin). Esempio: con 2 worker e 4 palline,
-il worker 0 gestisce le palline 0 e 2, il worker 1 le palline 1 e 3. Le due palline dei giocatori sono accodate a quelle
-piccole nella lista di lavoro, quindi sono trattate come le altre.
-
-#### Fasi di ogni passo
-
-Il coordinatore prende il lock della `Scene` per tutta la durata del passo e lavora su una **copia** del board.
-
-1. **Fork**: il coordinatore prepara i dati condivisi del passo (lista palline, `dt`, liste delle collisioni, array
-   degli errori `failures`) e rilascia i semafori `start[i]`.
-2. **Integrazione** (parallela): ogni worker aggiorna posizione, velocità, attrito e rimbalzi sui bordi delle *sole*
-   proprie palline. **Barriera.**
-3. **Rilevamento collisioni** (parallelo, sola lettura): ogni worker controlla le coppie `(i, j)` con `i` propria e
-   `j > i`, e registra `j` nella lista `collisions[i]`. Ogni lista ha un solo scrittore. Poi il worker rilascia
-   `finished`.
-4. **Join**: il coordinatore acquisisce *n* permessi da `finished` e controlla `failures`: se un worker ha lanciato
-   un'eccezione, il passo viene abbandonato e la partita termina con stato `IN_EXCEPTION`.
-5. **Applicazione collisioni** (seriale, coordinatore): risolve gli urti registrati e aggiorna l'ultimo giocatore che ha
-   colpito ciascuna pallina.
-6. **Commit** (`Scene`): rimozione delle palline in buca, aggiornamento dei punteggi (solo se l'ultima pallina a
-   colpirla era un giocatore), aggiornamento dello stato di gioco, notifica alla View e rilascio del lock.
-
-Gli impulsi dei giocatori non si inseriscono mai a metà passo: sia `PlayerController` sia `BotController` li applicano
-con `Scene.updateBoard`, che richiede lo stesso lock del passo di fisica. Il bot sceglie il bersaglio su una copia del
-board (`Scene.getBoard()` restituisce una copia fatta sotto lock) e applica l'impulso con un nuovo accesso al lock. Un
-impulso ha quindi effetto tra un
-passo e il successivo.
+Questa versione mantiene molti degli aspetti precedenti, ma usa un `ExecutorService` condiviso. 
+- `GameLifecycle` invia al pool `PlayerController`, `BotController` e `PhysicsLoop`; 
+- a ogni passo la fisica crea un gruppo di task per il movimento e uno per il rilevamento delle collisioni;
+- `invokeAll` attende ciascuna fase e `Future.get` propaga gli errori;
+- `PhysicsLoop` applica serialmente le collisioni ed esegue il commit.
 
 ## Comportamento
 
-Le reti sono a un livello di astrazione intermedio: i posti con un solo gettone rappresentano il punto di controllo di
-un thread, i posti dei semafori e dei lock rappresentano le risorse. Il numero di worker è fissato a 2 per leggibilità;
-con *n* worker si replica il ramo del worker e il peso dell'arco `finished → t_join` diventa *n*. Gli archi con doppia
-freccia sono archi di sola lettura.
+### Rete 1: passo di simulazione
 
-### Rete 1: un passo di simulazione
+Questa rete descrive un passo di simulazione della versione con thread nativi.
+
+Per leggibilità, questa rete considera un caso in cui vengono impegnati due worker.
 
 ![Simulazione](assets/net1_physics_step.png)
 
-Mostra il fork-join tra coordinatore e worker.
-
-- Il posto `scene_lock` ha un gettone: `t_lock` lo preleva e `t_commit` lo restituisce, quindi per tutto il passo nessun
-  altro thread può modificare la `Scene`.
-- `t_fork` produce un gettone in ogni `start[i]` e porta il coordinatore in `c_waiting`.
-- `t_barrier` è abilitata solo quando **tutti** i worker sono in `w*_at_barrier`: nessun worker può eseguire
-  `t_detect` prima che tutti abbiano concluso `t_integrate`. Questo garantisce che la fase di rilevamento legga
-  posizioni
-  non più modificate.
-- `t_join` richiede *n* gettoni in `finished` e il gettone di `c_waiting`: la fase di applicazione parte solo dopo che
-  tutti i worker hanno finito. Al termine di `t_finish` ogni worker torna in `w*_idle`, pronto per il passo successivo.
-- Anche se un worker lancia un'eccezione, la registra in `failures[id]` e raggiunge comunque la barriera e `finished`
-  (il rilascio è in un `finally`): la rete non si blocca e il coordinatore decide dopo il join cosa fare. Questo
-  comportamento non è disegnato per semplicità.
-- Proprietà visibili sulla rete: il ciclo è vivo (nessuna transizione resta bloccata), i
-  posti `w*_idle` e `c_ready` sono 1-limitati (nessun passo si sovrappone al successivo) e `scene_lock` è 1-limitato
-  (mutua esclusione).
+- `scene_lock` garantisce la mutua esclusione per l'intero passo; 
+- dopo il fork, la barriera impedisce di cercare collisioni prima che tutti abbiano concluso il movimento; 
+- il join richiede un segnale `finished` per worker;
+- I rilasci eseguiti nei `finally` evitano blocchi anche in caso di errore. 
+- I posti di controllo sono 1-limitati, quindi due passi non possono sovrapporsi.
 
 ### Rete 2: giocatori e stato condiviso
 
+Questa rete comportamentale è comune a entrambe le versioni concorrenti.
+
 ![Giocatori e Stato](assets/net2_players_lock.png)
 
-Mostra come umano, bot e fisica competono per `scene_lock`.
-
-- Il buffer dei comandi è modellato con la coppia di posti `buffer` / `buf_free` (200 gettoni): `t_key` consuma un posto
-  libero, `t_get` lo restituisce. Il caso "buffer pieno → comando scartato" non è disegnato (richiederebbe un arco
-  inibitore); il caso "buffer vuoto → il controller attende" emerge dal fatto che `t_get` non è abilitata senza
-  gettoni in `buffer`.
-- `t_exec`, `t_kick` e `t_phys_start` (cioè `PlayerController`, `BotController` e `PhysicsLoop`) condividono
-  `scene_lock`, quindi sono in mutua esclusione: gli impulsi non possono
-  mai interferire con un passo di fisica.
-- L'EDT non entra mai in competizione per il lock: lo scarico in coda è non bloccante, per questo la GUI resta
-  reattiva anche con migliaia di palline.
+Il buffer limitato disaccoppia EDT e `PlayerController`: a buffer vuoto il controller attende, mentre a buffer pieno l'EDT scarta il comando senza bloccarsi. Fisica, giocatore e bot condividono `scene_lock`, quindi la GUI resta reattiva.
 
 ### Rete 3: terminazione
 
+Questa rete comportamentale descrive un principio comune a entrambe le versioni concorrenti.
+
 ![Terminazione](assets/net3_termination.png)
 
-Mostra la terminazione coordinata da `GameLifecycle`, con un unico meccanismo per i due casi.
+A fine partita, la chiusura della finestra o uscita di un thread producono la stessa richiesta di stop idempotente.
+- `GameLifecycle` interrompe fisica, giocatore e bot; 
+- il coordinatore interrompe e attende i worker;
+- l'interruzione sblocca anche chi attende nel buffer o sui sincronizzatori, e `main` termina solo dopo tutti i `join`. 
 
-- **Cause di stop**: la fine partita (`t_game_over`, che porta `Scene` in uno stato diverso da `RUNNING`) oppure la
-  chiusura della finestra (`t_close_window`, che chiama `lifecycle.stop`). Anche l'uscita di un qualunque thread
-  produce una richiesta di stop (`stop_requested`).
-- `t_stop` è eseguibile una sola volta (consuma `stop_idle`): imposta lo stato di stop e interrompe i tre thread. Le
-  richieste successive passano per `t_stop_again`, che non ha effetto: è il significato di "idempotente".
-- Ogni thread esce o perché vede la partita ferma (`*_exit_stopped`, arco di sola lettura su `scene_stopped`) o perché
-  è stato interrotto (`*_exit_interrupted`). In particolare `PlayerController`, bloccato in `buffer.get()`, viene
-  svegliato dall'interruzione: non rimane nessun thread orfano anche quando la partita finisce senza chiudere la
-  finestra.
-- Il coordinatore, uscendo, interrompe i worker (bloccati su `start[i]` o sulla barriera) e li attende con `join`
-  (`t_stop_workers`). `main`, con `awaitTermination`, termina solo dopo `physics_ended`, `player_ended` e `bot_ended`
-  (`t_await_termination`).
+Nella versione con Executor lo stesso comportamento è ottenuto con `shutdownNow` e `awaitTermination` sul pool.
 
 ## Argomentazioni
 
-- **Round-robin vs blocchi contigui.** Il vincolo `j > i` sbilancia il carico: la pallina 0 controlla N-1 coppie,
-  l'ultima nessuna. Con blocchi contigui il primo worker sarebbe molto più carico. Il round-robin mescola id alti e
-  bassi e bilancia il lavoro.
-- **Vincolo `j > i`.** Dimezza i controlli (N (N-1)/2 coppie invece di N (N-1)) senza richiedere coordinamento tra i
-  worker per decidere chi tratta una coppia.
-- **Rilevamento e applicazione separati.** Il vincolo `j > i` evita i check doppi ma non il conflitto di scrittura: il
-  worker che gestisce `i` dovrebbe modificare anche `j`, che appartiene a un altro worker. Registrare le collisioni in
-  una fase di sola lettura e applicarle in una fase successiva elimina il problema senza lock fine-grained, evitando
-  deadlock e over-synchronization. Nella versione con thread nativi l'applicazione è eseguita dal coordinatore in modo
-  seriale: è la scelta più semplice e sicura, a costo di una parte non parallelizzata.
-- **Lavoro su una copia del board.** Il passo di fisica opera su una copia, e solo al commit lo stato della `Scene`
-  viene
-  sostituito: gli osservatori vedono sempre stati completi.
-- **Numero di worker legato ai core** invece di un thread per pallina, per evitare l'overhead di migliaia di thread.
-- **Semafori e barriera.** Si usano `Semaphore` e `CyclicBarrier` di `java.util.concurrent` per coordinare i worker,
-  mentre il buffer dei comandi è un monitor scritto a mano con `synchronized`/`wait`/`notifyAll`.
-- **Limiti noti.**
-  - Il rilevamento resta O (N²): una griglia spaziale ridurrebbe i controlli alle sole palline vicine.
-  - La fase di applicazione delle collisioni e il commit sono seriali (legge di Amdahl).
-  - Il lock della `Scene` è tenuto per tutto il passo, quindi un impulso attende al più la durata di un passo.
-  - Un'eccezione in un worker termina l'intera partita (stato `IN_EXCEPTION`) invece di essere gestita
-    localmente: è una scelta di semplicità, non di tolleranza ai guasti.
+- il round-robin è stato considerato per bilanciare i controlli;
+- i worker rilevano le collisioni senza modificare le palline, mentre il controller applica questi update. Si evitano così race conditions e lock, al costo di una fase seriale.
+- il lavoro su una copia e il commit atomico impediscono agli osservatori di vedere stati parziali.
+- il rilevamento di collisioni, i commit, la gestione degli errori e il lock della scena costituiscono il principale limite di scalabilità.
 
-## Performance Tests
+## Performance Test
 
-Il test usa direttamente il codice di produzione dei tre applicativi, senza GUI e rendering. Ogni campione parte da
-una nuova `MassiveBoardConf` con 4500 palline, esegue 1 secondo di warm-up e misura i 3 secondi successivi. Durante la
-misura, viene accodato un comando ogni 250 ms, il quale attraversa il `BoundedBuffer`, viene eseguito dal controller e
-acquisisce lo stesso monitor usato dalla fisica. L'impulso applicato è nullo, quindi la prova misura la reattività senza
-alterare la simulazione. I risultati sono la media di 3 campioni. Le versioni concorrenti vengono provate con un numero
-di worker che parte da 1 e raddoppia a ogni prova, includendo infine una configurazione con tanti worker quanti sono i
-processori logici disponibili.
+Il benchmark sviluppato misura la sola fisica delle palline, confrontando le versioni concorrenti con quella sincrona. I tre programmi eseguono lo stesso algoritmo su 4500 palline. Ogni risultato è la media di 3 prove, dopo 20 passi di warm-up (necessari in quando si sono notate delle discrepanze in loro assenza, specialmente su dispositivi datati) e su 30 passi misurati con `System.nanoTime()`. Questi test vengono calcolati su un numero di worker che va da 1 al numero dei processori disponibili, raddoppiando a ogni iterazione. 
 
-Le cinque misure di riferimento per le performance sono le seguenti:
-- Throughput: aggiornamenti fisici completati al secondo (Gli aggiornamenti generati dai comandi non sono contati
-  come frame).
-- Responsiveness: latenza media, in millisecondi, tra l'inserimento del comando nel buffer e il completamento
-  dell'aggiornamento del modello.
-- Speedup: `S_seq(n) = T_seq / T_n`, equivalente a `throughput_n / throughput_seq` a parità di carico. Il riferimento
-  richiesto dal README è l'applicativo `vsynchronized`.
-- Limite di Amdahl: per ogni applicativo concorrente si calcola prima lo speedup interno
-  `S_core(8) = throughput_8 / throughput_1`, e da questo si stima la frazione parallelizzabile
-  `P = (1 - 1 / S_core(8)) / (1 - 1 / 8)` e quindi il limite asintotico `S_inf = 1 / (1 - P)`.
-- Efficienza: `E(n) = S_core(n) / n`, dove `S_core(n) = throughput_n / throughput_1`. Il confronto parte da un
-  worker della stessa implementazione, così misura l'uso dei core senza confonderlo con differenze algoritmiche.
+Si riportano in seguito le misurazioni restituite dall'esecuzione dei test, la cui bontà è stata calcolata in base ai seguenti parametri:
+- tempo per passo `T(n)`;
+- throughput `1/T(n)`; 
+- speedup `S(n) = T_seq/T(n)`;
+- efficienza `E(n) = S(n)/n`.
 
 | Implementazione    | Worker | Throughput (upd/s) | Responsiveness (ms) | Speedup | Amdahl `S_inf` | Efficienza |
 |--------------------|-------:|-------------------:|--------------------:|--------:|---------------:|-----------:|
@@ -248,50 +133,36 @@ Le cinque misure di riferimento per le performance sono le seguenti:
 | Executor Framework |      4 |              48,81 |               33,95 |    8,62 |           2,44 |      39,6% |
 | Executor Framework |      8 |              63,80 |               22,30 |   11,27 |           2,44 |      25,9% |
 
-Le due versioni concorrenti migliorano sia il throughput sia la responsiveness. Con 8 worker, i thread nativi
-raggiungono 50,18 aggiornamenti al secondo, 8,87 volte il riferimento sequenziale, e riducono la latenza media da
-91,64 ms a 26,19 ms. L'Executor Framework raggiunge il risultato assoluto migliore: 63,80 aggiornamenti al secondo,
-con speedup 11,27 e latenza di 22,30 ms. La responsiveness dell'Executor Framework con 2 worker, pari a 56,41 ms,
-è l'unico valore non monotono e può dipendere dalla variabilità di scheduling della singola esecuzione.
+Entrambe le versioni concorrenti migliorano nettamente il riferimento sequenziale. All'aumentare dei worker cresce il throughput e, salvo normali oscillazioni dovute allo scheduling, diminuisce il tempo di risposta.
 
-Per isolare il contributo dei core occorre osservare l'efficienza: già con
-un solo worker le implementazioni concorrenti sono strutturalmente diverse dal riferimento. Da 1 a 8 worker il
-throughput dei thread nativi cresce di 2,33 volte, con efficienza del 29,1%; quello dell'Executor Framework cresce di
-2,07 volte, con efficienza del 25,9%. Il rendimento decresce all'aumentare dei worker per effetto delle fasi seriali
-(applicazione delle collisioni e commit), della sincronizzazione e della schedulazione. La stima di Amdahl fornisce un
-limite asintotico di 2,87 per i thread nativi e 2,44 per l'Executor Framework rispetto alle rispettive esecuzioni con un
-worker.
+Si nota che la crescita non è però lineare: l'efficienza diminuisce all'aumentare dei worker, fino al 29,1% per i thread nativi e al 25,9% per l'Executor con 8 worker. Il risultato può essere considerato coerente con l'overhead di coordinamento e con le fasi seriali di applicazione delle collisioni e commit, come sopracitato.
 
 ## Model-Checking
 
-Il model checking è stato eseguito con JPF Core 8 sui due `BoundedBufferImpl` usati dalle versioni concorrenti. Ogni 
-modello usa direttamente il buffer di produzione con capacità 1, un produttore e un consumatore. Il produttore
-inserisce 1 e 2, mentre il consumatore deve estrarli nello stesso ordine. Il `main` attende entrambi con `join` e 
-controlla che i thread siano terminati e che il buffer sia vuoto. Questa istanza piccola mantiene finito lo spazio 
-degli stati ma obbliga comunque JPF a esplorare le possibili interleaving prodotte dal buffer pieno e dal buffer vuoto.
+JPF esplora due modelli finiti:
+- `BoundedBufferJpfTest` verifica FIFO, svuotamento e terminazione sul buffer reale;
+- `PhysicsStepJpfTest` verifica con 2 worker che movimento, barriera e collisioni rispettino l'ordine previsto e terminino.
 
-Sono verificate le seguenti proprietà:
+Le asserzioni e `PreciseRaceDetector` controllano anche eccezioni, deadlock e data race.
 
-- assenza di deadlock e di eccezioni non gestite;
-- terminazione di produttore e consumatore;
-- ordine FIFO e assenza di elementi persi o duplicati;
-- buffer vuoto al termine;
-- assenza di data race, tramite `PreciseRaceDetector`.
+Vengono di seguito riportati i risultati emessi dall'esecuzione di JPF sul progetto:
+- `pcd.test.jpf.BoundedBufferJpfTest.main()`: no errors detected;
+- `pcd.test.jpf.PhysicsStepJpfTest.main()`: no errors detected.
 
-I target sono `NativeBufferJpfTest` ed `ExecutorBufferJpfTest`, mentre le configurazioni sono
-`jpf/native-buffer.jpf` e `jpf/executor-buffer.jpf`. Entrambe abilitano le asserzioni e il race detector. Lo script
-`jpf/run.ps1` compila solo le classi necessarie in `out/jpf` ed esegue in sequenza le due configurazioni con JDK 11:
+## Avvio dell'applicazione e dei test
+
+Selezionare in `src/pcd/poool/Main.java` uno tra `SYNCHRONIZED`, `NATIVE_THREADS`, `EXECUTOR_FRAMEWORK` e
+`PERFORMANCE_TEST`.
+
+Compilazione e avvio della modalità selezionata:
+
+```powershell
+mvn clean package
+java -jar target/pcd-ass-01-1.0-SNAPSHOT.jar
+```
+
+Avvio dei test JPF:
 
 ```powershell
 ./jpf/run.ps1 -JpfHome C:/path/to/jpf-core -JavaHome C:/path/to/jdk-11
 ```
-
-| Modello            | Esito                | Stati nuovi | Stati visitati | Backtrack | Stati finali | Profondità massima |
-|--------------------|----------------------|------------:|---------------:|----------:|-------------:|-------------------:|
-| Thread nativi      | `no errors detected` |         387 |            361 |       748 |            3 |                 57 |
-| Executor Framework | `no errors detected` |         387 |            361 |       748 |            3 |                 57 |
-
-In entrambi i casi JPF ha prodotto 387 choice generator relativi ai thread e ha concluso con
-`no errors detected`. Nel modello finito esplorato non sono quindi emersi deadlock, race, violazioni delle asserzioni o
-mancata terminazione. Il risultato non si estende automaticamente alla simulazione fisica, al protocollo tra worker o
-a un numero arbitrario di produttori, consumatori ed elementi: tali componenti restano fuori dal perimetro verificato.

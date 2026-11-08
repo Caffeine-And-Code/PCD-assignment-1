@@ -1,17 +1,19 @@
 package pcd.test;
 
-import java.util.List;
-
-record BenchmarkResult(String name, int workers, List<BenchmarkSample> samples) {
-    BenchmarkResult {
-        samples = List.copyOf(samples);
+record BenchmarkResult(String name, int workers, double elapsedNanos) {
+    double millisecondsPerStep(int steps) {
+        return elapsedNanos / steps / 1_000_000;
     }
 
-    double meanThroughput() {
-        return samples.stream().mapToDouble(BenchmarkSample::throughput).average().orElse(0);
+    double throughput(int steps) {
+        return steps * 1_000_000_000.0 / elapsedNanos;
     }
 
-    double meanResponseMillis() {
-        return samples.stream().mapToDouble(BenchmarkSample::responseMillis).average().orElse(0);
+    double speedup(BenchmarkResult sequential) {
+        return sequential.elapsedNanos / elapsedNanos;
+    }
+
+    double efficiency(BenchmarkResult sequential) {
+        return speedup(sequential) / workers;
     }
 }

@@ -1,20 +1,19 @@
 package pcd.test.jpf;
 
-import pcd.poool.vjavaexecutorframework.util.BoundedBuffer;
-import pcd.poool.vjavaexecutorframework.util.BoundedBufferImpl;
+import pcd.poool.vnativethreads.util.BoundedBuffer;
+import pcd.poool.vnativethreads.util.BoundedBufferImpl;
 
-/** JPF entry point for the Executor Framework bounded buffer. */
-public final class ExecutorBufferJpfTest {
-    private ExecutorBufferJpfTest() {
+public final class BoundedBufferJpfTest {
+    private BoundedBufferJpfTest() {
     }
 
     public static void main(String[] args) throws InterruptedException {
         BoundedBuffer<Integer> buffer = new BoundedBufferImpl<>(1);
-        var producer = new Thread(() -> produce(buffer), "producer");
-        var consumer = new Thread(() -> consume(buffer), "consumer");
+        var producer = new Thread(() -> produce(buffer));
+        var consumer = new Thread(() -> consume(buffer));
 
-        consumer.start();
         producer.start();
+        consumer.start();
         producer.join();
         consumer.join();
 
@@ -28,8 +27,7 @@ public final class ExecutorBufferJpfTest {
             buffer.put(1);
             buffer.put(2);
         } catch (InterruptedException ex) {
-            Thread.currentThread().interrupt();
-            throw new AssertionError("Producer interrupted", ex);
+            throw new AssertionError(ex);
         }
     }
 
@@ -38,8 +36,7 @@ public final class ExecutorBufferJpfTest {
             assert buffer.get() == 1;
             assert buffer.get() == 2;
         } catch (InterruptedException ex) {
-            Thread.currentThread().interrupt();
-            throw new AssertionError("Consumer interrupted", ex);
+            throw new AssertionError(ex);
         }
     }
 }

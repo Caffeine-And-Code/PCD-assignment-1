@@ -32,16 +32,15 @@ New-Item -ItemType Directory -Path $classes | Out-Null
 $sources = @(
     (Join-Path $projectRoot "src/pcd/poool/vnativethreads/util/BoundedBuffer.java"),
     (Join-Path $projectRoot "src/pcd/poool/vnativethreads/util/BoundedBufferImpl.java"),
-    (Join-Path $projectRoot "src/pcd/poool/vjavaexecutorframework/util/BoundedBuffer.java"),
-    (Join-Path $projectRoot "src/pcd/poool/vjavaexecutorframework/util/BoundedBufferImpl.java"),
-    (Join-Path $projectRoot "src/pcd/test/jpf/NativeBufferJpfTest.java"),
-    (Join-Path $projectRoot "src/pcd/test/jpf/ExecutorBufferJpfTest.java")
+    (Join-Path $projectRoot "src/pcd/test/jpf/BoundedBufferJpfTest.java"),
+    (Join-Path $projectRoot "src/pcd/test/jpf/PhysicsStepModel.java"),
+    (Join-Path $projectRoot "src/pcd/test/jpf/PhysicsStepJpfTest.java")
 )
 
 & $javac -d $classes $sources
 if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 
-$configurations = @("native-buffer.jpf", "executor-buffer.jpf")
+$configurations = @("bounded-buffer.jpf", "physics-step.jpf")
 foreach ($configuration in $configurations) {
     Write-Host "`nRunning $configuration"
     & $java -Xmx1024m -jar $runJpf "+classpath=$classes" `

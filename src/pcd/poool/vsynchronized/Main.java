@@ -10,7 +10,7 @@ import pcd.poool.vsynchronized.view.ViewModel;
 import javax.swing.*;
 
 public class Main {
-    static void main() {
+    public static void main(String[] args) {
         SwingUtilities.invokeLater(() -> {
             Board board = new Board();
             board.init(new MassiveBoardConf());
