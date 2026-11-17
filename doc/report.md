@@ -7,17 +7,12 @@
 
 ## Analisi
 
-Le principali attività concorrenti da valutare sono state:
-- l'aggiornamento di posizione e velocità di un numero elevato di palline a ogni passo. Il rilevamento delle collisioni (O ($N^2$) in versione naive) è il principale collo di bottiglia;
+I principali aspetti critici che sono stati valutati, dal punto di vista della concorrenza del programma, sono stati:
+- l'aggiornamento di posizione e velocità di un numero elevato di palline a ogni passo. Il rilevamento delle collisioni è il principale collo di bottiglia;
+- la gestione dello stato condiviso, ovvero di molte variabili che sono lette e scritte da più thread. Sono quindi necessari accessi protetti;
 - l'input asincrono del giocatore umano da tastiera che modifica la velocità della sua pallina;
-- il processo processo autonomo che applica impulsi alla pallina del bot a intervalli selezionati;
-- il rendering della grafica, separato dal calcolo per permette all'applicazione di rimanere reattiva.
-
-Di conseguenza, i principali aspetti critici riscontrati sono stati:
-- la gestione dello stato condiviso, ovvero di molte variabili che sono lette e scritte da più thread, quindi sono necessari accessi protetti;
-- gli urti, i quali coinvolgono due palline, quindi worker diversi potrebbero scrivere sulla stessa pallina (con rischio di update persi);
-- la sincronia: le fasi di ogni passo hanno un ordine preciso e i worker devono attendersi a fine fase;
-- la GUI, la quale deve ricevere uno snapshot coerente dello stato, senza leggere dati a metà aggiornamento;
+- il processo autonomo che applica impulsi alla pallina del bot a intervalli selezionati;
+- il rendering della grafica, separato dal calcolo per permette all'applicazione di rimanere reattiva, il quale deve, inoltre, ricevere uno snapshot della scena coerente e stabile, senza leggere dati a metà aggiornamento.
 - la gestione del game over, la quale richiede uno stop coordinato di più thread, senza deadlock né thread orfani.
 
 ## Architettura
@@ -26,17 +21,11 @@ Il progetto è organizzato secondo il pattern Model-View-Controller (MVC), mante
 
 ### Versione sincrona
 
-Nella versione sincrona ([vsynchronized](https://github.com/Caffeine-And-Code/PCD-assignment-1/tree/d7be7ddd448c2c60d066f1e16673c332c3f10349/src/pcd/poool/vsynchronized)), non richiesta ma sviluppata allo scopo di avere un riferimento per i test di performance, l'architettura è suddivisa nei seguenti componenti:
+Nella versione sincrona ([vsynchronized](https://github.com/Caffeine-And-Code/PCD-assignment-1/tree/d7be7ddd448c2c60d066f1e16673c332c3f10349/src/pcd/poool/vsynchronized)) (non richiesta ma sviluppata allo scopo di avere un riferimento per i test di performance) l'architettura è suddivisa nei seguenti componenti:
 
-- Model: contiene le entità del gioco e la logica fisica. La classe `Board` rappresenta lo stato condiviso
-  e agisce da monitor tramite un `ReentrantLock`, garantendo l'accesso mutuamente esclusivo durante gli aggiornamenti
-  della simulazione;
-- View: gestisce la rappresentazione grafica tramite Swing. La classe `View` implementa `BoardObserver` e
-  riceve le notifiche di aggiornamento dal Model. Il `ViewModel` mantiene una copia dei dati necessari al rendering,
-  ottenuta attraverso gli snapshot del `Board`;
-- Controller: gestisce gli input e l'esecuzione della simulazione. `PooolController` riceve i comandi
-  della tastiera attraverso un buffer thread-safe (`BoundedBufferImpl`, monitor con `synchronized`/`wait`/
-  `notifyAll`), mentre `PhysicsLoop` esegue gli aggiornamenti fisici su un thread dedicato.
+- Model: contiene le entità del gioco e la logica fisica. La classe `Board` rappresenta lo stato condiviso e agisce da monitor tramite un `ReentrantLock`, garantendo l'accesso mutuamente esclusivo durante gli aggiornamenti della simulazione;
+- View: gestisce la rappresentazione grafica tramite Swing. La classe `View` implementa `BoardObserver` e riceve le notifiche di aggiornamento dal Model. Il `ViewModel` mantiene una copia dei dati necessari al rendering, ottenuta attraverso gli snapshot del `Board`;
+- Controller: gestisce gli input e l'esecuzione della simulazione. `PooolController` riceve i comandi della tastiera attraverso un buffer thread-safe (`BoundedBufferImpl`, monitor con `synchronized`/`wait`/`notifyAll`), mentre `PhysicsLoop` esegue gli aggiornamenti fisici su un thread dedicato.
 
 In questa versione, il calcolo fisico viene eseguito sequenzialmente da un unico thread, mentre la gestione dei comandi e la GUI operano su thread separati.
 
@@ -45,19 +34,19 @@ Le altre due versioni mantengono la stessa organizzazione MVC, introducendo diff
 ### Versione con thread nativi
 
 I principali componenti della versione con thread nativi sono:
-- `PhysicsLoop`, che coordina un numero configurabile di worker, di base `availableProcessors() - 1` con un minimo di 1; 
+- `PhysicsLoop`, che coordina un numero configurabile di worker, di base pari al numero di processori disponibili meno 1 (con un minimo di 1); 
 - EDT di Swing, `PlayerController` e `BotController`, i quali gestiscono rispettivamente tastiera, comandi e bot;
-- `GameLifecycle` centralizza avvio, interruzione e attesa dei thread. I comandi passano attraverso un `BoundedBufferImpl` da 200 elementi senza bloccare la GUI.
+- `GameLifecycle` centralizza avvio, interruzione e attesa dei thread. I comandi passano attraverso un `BoundedBufferImpl` senza bloccare la GUI.
 - `Scene` protegge board, punteggi e stato con un `ReentrantLock`: fisica e impulsi sono quindi serializzati e la View osserva solo stati completi. 
 
-Durante un passo il coordinatore lavora su una copia del board e assegna le palline ai worker in round-robin. Il passo segue queste fasi:
-1. il coordinatore rilascia i semafori;
-2. i worker aggiornano in parallelo le proprie palline e si sincronizzano;
-3. i worker rilevano in parallelo le collisioni, scrivendo ciascuno nelle proprie liste;
-4. il coordinatore attende i permessi, controlla gli errori e applica le collisioni;
-5. `Scene` esegue il commit, aggiorna punteggi e stato e notifica la View.
+Durante un passo il coordinatore lavora su una copia del board e assegna le palline ai worker in round-robin. Ogni passo segue queste fasi:
+- il coordinatore rilascia i semafori;
+- i worker aggiornano in parallelo le rispettive palline e si sincronizzano;
+- i worker rilevano in parallelo le collisioni, scrivendo ciascuno nelle proprie liste;
+- il coordinatore attende i permessi, controlla gli errori e applica le collisioni;
+- la scena esegue il commit, aggiorna punteggi e stato e notifica la View.
 
-Gli impulsi possono essere applicati solo tra due passi. Un errore in un worker porta la partita in `IN_EXCEPTION` e la terminazione interrompe e attende tutti i thread.
+Gli impulsi possono essere applicati solo tra due passi. Un errore in un worker porta la partita in stato `IN_EXCEPTION`, la terminazione interrompe e attende tutti i thread.
 
 ### Versione con Executor Framework
 
@@ -106,14 +95,15 @@ Nella versione con Executor lo stesso comportamento è ottenuto con `shutdownNow
 
 ## Argomentazioni
 
+Vengono in seguito giustificati i principali aspetti sviluppati, alla luce dell'analisi svolta sulla traccia:
 - il round-robin è stato considerato per bilanciare i controlli;
-- i worker rilevano le collisioni senza modificare le palline, mentre il controller applica questi update. Si evitano così race conditions e lock, al costo di una fase seriale.
+- i worker rilevano le collisioni senza modificare le palline, mentre il controller applica questi update. Si evitano così race conditions e lock, al costo di una fase seriale;
 - il lavoro su una copia e il commit atomico impediscono agli osservatori di vedere stati parziali.
 - il rilevamento di collisioni, i commit, la gestione degli errori e il lock della scena costituiscono il principale limite di scalabilità.
 
 ## Performance Test
 
-Il benchmark sviluppato misura la sola fisica delle palline, confrontando le versioni concorrenti con quella sincrona. I tre programmi eseguono lo stesso algoritmo su 4500 palline. Ogni risultato è la media di 3 prove, dopo 20 passi di warm-up (necessari in quando si sono notate delle discrepanze in loro assenza, specialmente su dispositivi datati) e su 30 passi misurati con `System.nanoTime()`. Questi test vengono calcolati su un numero di worker che va da 1 al numero dei processori disponibili, raddoppiando a ogni iterazione. 
+Il benchmark sviluppato misura la sola fisica delle palline, confrontando le versioni concorrenti con quella sincrona. I tre programmi eseguono lo stesso algoritmo su 4500 palline. Ogni risultato è la media di 3 prove, dopo 20 passi di warm-up (necessari in quando si sono notate delle discrepanze in loro assenza, specialmente su dispositivi datati) e su 30 passi misurati con l'orologio del sistema. Questi test vengono calcolati su un numero di worker che va da 1 al numero dei processori disponibili, raddoppiando a ogni iterazione. 
 
 Si riportano in seguito le misurazioni restituite dall'esecuzione dei test, la cui bontà è stata calcolata in base ai seguenti parametri:
 - tempo per passo `T(n)`;
@@ -139,7 +129,7 @@ Si nota che la crescita non è però lineare: l'efficienza diminuisce all'aument
 
 ## Model-Checking
 
-JPF esplora due modelli finiti:
+Allo scopo è stato configurato JPF, il quale esplora due modelli finiti:
 - `BoundedBufferJpfTest` verifica FIFO, svuotamento e terminazione sul buffer reale;
 - `PhysicsStepJpfTest` verifica con 2 worker che movimento, barriera e collisioni rispettino l'ordine previsto e terminino.
 
